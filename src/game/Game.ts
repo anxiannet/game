@@ -194,7 +194,8 @@ export class Game {
   private handleDeathsAndLeaks(): void {
     const spawned: Enemy[] = [];
     for (const enemy of this.enemies) {
-      if (enemy.dead) {
+      if (enemy.dead && !enemy.rewardClaimed) {
+        enemy.rewardClaimed = true;
         this.kills += 1;
         this.economy.add(enemy.reward);
         this.effects.push(new Effect('coin', enemy.pos, { text: `+${enemy.reward}`, color: '#facc15' }));
@@ -223,7 +224,7 @@ export class Game {
         }
       }
     }
-    this.enemies = this.enemies.filter((enemy) => !enemy.dead && !enemy.reachedBase).concat(spawned);
+    this.enemies = this.enemies.filter((enemy) => !enemy.readyToRemove && !enemy.reachedBase).concat(spawned);
   }
 
   private endGame(phase: 'won' | 'lost'): void {

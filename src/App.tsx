@@ -15,7 +15,8 @@ const initialStats: GameStats = {
 };
 
 export default function App() {
-  const isPathTool = new URLSearchParams(window.location.search).get('tool') === 'path';
+  const tool = new URLSearchParams(window.location.search).get('tool');
+  const isPathTool = tool === 'path' || tool === 'build';
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gameRef = useRef<Game | null>(null);
   const [stats, setStats] = useState<GameStats>(initialStats);
@@ -33,7 +34,7 @@ export default function App() {
     };
   }, [isPathTool]);
 
-  if (isPathTool) return <PathPointTool />;
+  if (isPathTool) return <PathPointTool mode={tool === 'build' ? 'build' : 'path'} />;
 
   return (
     <main className="app-shell">

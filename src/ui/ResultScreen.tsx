@@ -20,7 +20,7 @@ export default function ResultScreen({ stats, onRestart }: Props) {
           <div><span>超过</span><strong>{percent}%</strong></div>
         </div>
         <h2>{stats.phase === 'won' ? '老板今天没能突破你的工位。' : '差一点就守住，真的就差一点。'}</h2>
-        <button onClick={onRestart}>再顶一局</button>
+        <button className="metal-button yellow" onClick={onRestart}><span>▶</span>再顶一局</button>
       </div>
     </div>
   );

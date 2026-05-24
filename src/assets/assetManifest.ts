@@ -10,7 +10,7 @@ export const assetManifest = {
     flame: '/assets/towers/flame-tower.png',
   },
   enemies: {
-    yellow: '/assets/enemies/yellow-runner.png',
+    yellow: '/assets/enemies/yellow-monster-sheet.png',
     slacker: '/assets/enemies/slacker.png',
     overtime: '/assets/enemies/overtime.png',
     requirement: '/assets/enemies/requirement.png',

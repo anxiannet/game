@@ -1,4 +1,4 @@
-import { EnemyKind, Vec2, enemyConfigs, pathPoints } from '../game/config';
+import { EnemyAnimState, EnemyKind, Vec2, enemyConfigs, pathPoints, yellowMonsterSpriteAtlas } from '../game/config';
 
 export class Enemy {
   id: number;
@@ -19,6 +19,11 @@ export class Enemy {
   burnDps = 0;
   pauseTimer = 0;
   progress = 0;
+  animTime = 0;
+  hitTimer = 0;
+  deathTimer = 0;
+  rewardClaimed = false;
+  facingX: 1 | -1 = 1;
 
   constructor(id: number, kind: EnemyKind, wave: number, spawnOffset = 0) {
     const cfg = enemyConfigs[kind];
@@ -36,7 +41,13 @@ export class Enemy {
   }
 
   update(dt: number): void {
-    if (this.dead || this.reachedBase) return;
+    if (this.reachedBase) return;
+    this.animTime += dt;
+
+    if (this.dead) {
+      this.deathTimer += dt;
+      return;
+    }
 
     if (this.kind === 'slacker' && this.pauseTimer <= 0 && Math.random() < dt * 0.16) {
       this.pauseTimer = 0.45;
@@ -49,8 +60,10 @@ export class Enemy {
     if (this.burnTimer > 0) {
       this.burnTimer -= dt;
       this.takeDamage(this.burnDps * dt);
+      if (this.dead) return;
     }
     if (this.slowTimer > 0) this.slowTimer -= dt;
+    if (this.hitTimer > 0) this.hitTimer -= dt;
 
     const target = pathPoints[this.pathIndex + 1];
     if (!target) {
@@ -61,6 +74,9 @@ export class Enemy {
     const dx = target.x - this.pos.x;
     const dy = target.y - this.pos.y;
     const dist = Math.hypot(dx, dy);
+    if (Math.abs(dx) > 24 && Math.abs(dx) > Math.abs(dy) * 0.55) {
+      this.facingX = dx < 0 ? -1 : 1;
+    }
     const moveSpeed = this.speed * (this.slowTimer > 0 ? 0.45 : 1);
     const step = moveSpeed * dt;
     if (step >= dist) {
@@ -76,8 +92,17 @@ export class Enemy {
   }
 
   takeDamage(amount: number): void {
+    if (this.dead) return;
+    const wasReacting = this.hitTimer > 0;
     this.hp -= amount;
-    if (this.hp <= 0) this.dead = true;
+    this.hitTimer = Math.max(this.hitTimer, 0.18);
+    if (!wasReacting) this.animTime = 0;
+    if (this.hp <= 0) {
+      this.dead = true;
+      this.hp = 0;
+      this.animTime = 0;
+      this.deathTimer = 0;
+    }
   }
 
   applySlow(seconds: number): void {
@@ -87,5 +112,18 @@ export class Enemy {
   applyBurn(dps: number, seconds: number): void {
     this.burnDps = Math.max(this.burnDps, dps);
     this.burnTimer = Math.max(this.burnTimer, seconds);
+  }
+
+  get animState(): EnemyAnimState {
+    if (this.dead) return 'death';
+    if (this.hitTimer > 0) return 'hit';
+    if (this.pauseTimer > 0) return 'idle';
+    return 'run';
+  }
+
+  get readyToRemove(): boolean {
+    if (!this.dead) return false;
+    const deathFrames = yellowMonsterSpriteAtlas.frames.death.length;
+    return this.kind !== 'yellow' || this.deathTimer >= deathFrames / yellowMonsterSpriteAtlas.fps.death;
   }
 }

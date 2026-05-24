@@ -9,6 +9,14 @@ const labels: Record<TowerKind, string> = {
   flame: '火焰',
 };
 
+const icons: Record<TowerKind, string> = {
+  machineGun: '⌖',
+  frost: '❄',
+  bomb: '●',
+  tesla: '⚡',
+  flame: '▲',
+};
+
 type Props = {
   coins: number;
   canBuild: boolean;
@@ -23,9 +31,9 @@ export default function TowerBar({ coins, canBuild, onBuild }: Props) {
         const disabled = !canBuild || coins < cfg.price;
         return (
           <button className="tower-button" disabled={disabled} key={kind} onClick={() => onBuild(kind)}>
-            <span className="tower-icon" style={{ ['--tower-color' as string]: cfg.color }} />
+            <span className="tower-icon" style={{ ['--tower-color' as string]: cfg.color }}>{icons[kind]}</span>
             <strong>{labels[kind]}</strong>
-            <small>{cfg.price}</small>
+            <small><span>$</span>{cfg.price}</small>
           </button>
         );
       })}

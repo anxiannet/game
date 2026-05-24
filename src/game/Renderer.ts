@@ -3,13 +3,17 @@ import { Effect } from '../entities/Effect';
 import { Projectile } from '../entities/Projectile';
 import { Tower } from '../entities/Tower';
 import { assetManifest } from '../assets/assetManifest';
-import { buildSpots, DESIGN_HEIGHT, DESIGN_WIDTH, pathPoints, towerConfigs } from './config';
+import { buildSpots, DESIGN_HEIGHT, DESIGN_WIDTH, pathPoints, towerConfigs, yellowMonsterSpriteAtlas } from './config';
+import type { EnemyAnimState, SpriteFrame } from './config';
 import type { GameSnapshot } from './Game';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private mapImage = new Image();
   private mapReady = false;
+  private enemyImages: Partial<Record<keyof typeof assetManifest.enemies, HTMLImageElement>> = {};
+  private enemyReady: Partial<Record<keyof typeof assetManifest.enemies, boolean>> = {};
+  private yellowMonsterFrames?: Record<EnemyAnimState, HTMLCanvasElement[]>;
 
   constructor(private canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -19,6 +23,7 @@ export class Renderer {
       this.mapReady = true;
     };
     this.mapImage.src = assetManifest.maps.industrial;
+    this.loadEnemyImages();
     this.resize();
   }
 
@@ -114,14 +119,14 @@ export class Renderer {
       ctx.lineWidth = snapshot.selectedSpot === index ? 8 : 5;
       ctx.setLineDash([18, 12]);
       ctx.beginPath();
-      ctx.roundRect(-54, -54, 108, 108, 16);
+      ctx.roundRect(-45, -45, 90, 90, 14);
       ctx.fill();
       ctx.stroke();
       ctx.setLineDash([]);
       if (!built) {
         ctx.fillStyle = snapshot.selectedSpot === index ? 'rgba(251,191,36,0.95)' : 'rgba(255,255,255,0.82)';
-        ctx.fillRect(-25, -5, 50, 10);
-        ctx.fillRect(-5, -25, 10, 50);
+        ctx.fillRect(-21, -5, 42, 10);
+        ctx.fillRect(-5, -21, 10, 42);
       }
       ctx.restore();
     });
@@ -161,6 +166,48 @@ export class Renderer {
   }
 
   private drawEnemy(enemy: Enemy): void {
+    if (enemy.kind === 'yellow' && this.enemyReady.yellow) {
+      this.drawYellowMonster(enemy);
+      return;
+    }
+    this.drawFallbackEnemy(enemy);
+  }
+
+  private drawYellowMonster(enemy: Enemy): void {
+    const cachedFrames = this.yellowMonsterFrames;
+    if (!cachedFrames) return;
+    const { ctx } = this;
+    const state = enemy.dead ? 'death' : 'run';
+    const frames = cachedFrames[state];
+    const fps = yellowMonsterSpriteAtlas.fps[state];
+    const frameIndex = state === 'death'
+      ? Math.min(Math.floor(enemy.deathTimer * fps), frames.length - 1)
+      : Math.floor(enemy.animTime * fps) % frames.length;
+    const frame = frames[frameIndex];
+    const facingLeft = enemy.facingX < 0;
+    const drawHeight = enemy.radius * (state === 'death' ? 3.25 : 3.95);
+    const drawWidth = enemy.radius * (state === 'death' ? 4.05 : 4.65);
+
+    ctx.save();
+    ctx.translate(enemy.pos.x, enemy.pos.y);
+    if (facingLeft) ctx.scale(-1, 1);
+    ctx.shadowColor = enemy.hitTimer > 0 ? '#fef08a' : enemy.color;
+    ctx.shadowBlur = enemy.hitTimer > 0 ? 12 : 4;
+    ctx.drawImage(frame, -drawWidth / 2, -drawHeight + 9, drawWidth, drawHeight);
+    if (enemy.hitTimer > 0 && !enemy.dead) {
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = Math.min(enemy.hitTimer * 2.5, 0.22);
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.ellipse(0, -enemy.radius * 1.2, enemy.radius * 1.45, enemy.radius * 1.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    this.drawEnemyStatus(enemy, -enemy.radius * 4.05);
+  }
+
+  private drawFallbackEnemy(enemy: Enemy): void {
     const { ctx } = this;
     ctx.save();
     ctx.translate(enemy.pos.x, enemy.pos.y);
@@ -178,25 +225,113 @@ export class Renderer {
     ctx.arc(-enemy.radius * 0.32, -enemy.radius * 0.1, 4, 0, Math.PI * 2);
     ctx.arc(enemy.radius * 0.32, -enemy.radius * 0.1, 4, 0, Math.PI * 2);
     ctx.fill();
-    if (enemy.slowTimer > 0) {
+    ctx.restore();
+    this.drawEnemyStatus(enemy, -enemy.radius - 18);
+  }
+
+  private drawEnemyStatus(enemy: Enemy, barY: number): void {
+    const { ctx } = this;
+    ctx.save();
+    ctx.translate(enemy.pos.x, enemy.pos.y);
+    if (enemy.slowTimer > 0 && !enemy.dead) {
       ctx.strokeStyle = '#67e8f9';
       ctx.lineWidth = 5;
       ctx.beginPath();
-      ctx.arc(0, 0, enemy.radius + 9, 0, Math.PI * 2);
+      ctx.arc(0, -enemy.radius * 0.35, enemy.radius + 9, 0, Math.PI * 2);
       ctx.stroke();
     }
-    if (enemy.burnTimer > 0) {
-      ctx.fillStyle = 'rgba(239,68,68,0.7)';
+    if (enemy.burnTimer > 0 && !enemy.dead) {
+      ctx.fillStyle = 'rgba(239,68,68,0.74)';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 12;
       ctx.beginPath();
-      ctx.arc(0, -enemy.radius - 9, 8, 0, Math.PI * 2);
+      ctx.arc(0, -enemy.radius * 2.05, 8, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#111827';
-    ctx.fillRect(-enemy.radius, -enemy.radius - 18, enemy.radius * 2, 8);
-    ctx.fillStyle = '#22c55e';
-    ctx.fillRect(-enemy.radius, -enemy.radius - 18, enemy.radius * 2 * Math.max(enemy.hp / enemy.maxHp, 0), 8);
+    if (!enemy.dead) {
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(-enemy.radius, barY, enemy.radius * 2, 8);
+      ctx.fillStyle = enemy.hp / enemy.maxHp < 0.35 ? '#ef4444' : '#22c55e';
+      ctx.fillRect(-enemy.radius, barY, enemy.radius * 2 * Math.max(enemy.hp / enemy.maxHp, 0), 8);
+    }
     ctx.restore();
+  }
+
+  private loadEnemyImages(): void {
+    (Object.keys(assetManifest.enemies) as Array<keyof typeof assetManifest.enemies>).forEach((kind) => {
+      const image = new Image();
+      image.onload = () => {
+        if (kind === 'yellow') {
+          this.yellowMonsterFrames = this.makeTransparentYellowFrames(image);
+        }
+        this.enemyReady[kind] = true;
+      };
+      image.src = assetManifest.enemies[kind];
+      this.enemyImages[kind] = image;
+    });
+  }
+
+  private makeTransparentYellowFrames(image: HTMLImageElement): Record<EnemyAnimState, HTMLCanvasElement[]> {
+    return {
+      idle: yellowMonsterSpriteAtlas.frames.idle.map((frame) => this.makeTransparentFrame(image, frame)),
+      run: yellowMonsterSpriteAtlas.frames.run.map((frame) => this.makeTransparentFrame(image, frame)),
+      hit: yellowMonsterSpriteAtlas.frames.hit.map((frame) => this.makeTransparentFrame(image, frame)),
+      death: yellowMonsterSpriteAtlas.frames.death.map((frame) => this.makeTransparentFrame(image, frame)),
+    };
+  }
+
+  private makeTransparentFrame(image: HTMLImageElement, frame: SpriteFrame): HTMLCanvasElement {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return canvas;
+    canvas.width = frame.w;
+    canvas.height = frame.h;
+    ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
+
+    const imageData = ctx.getImageData(0, 0, frame.w, frame.h);
+    const { data } = imageData;
+    const foreground = new Uint8Array(frame.w * frame.h);
+    const keepDarkOutline = new Uint8Array(frame.w * frame.h);
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const saturated = max - min > 26;
+      const bright = max > 78;
+      foreground[i / 4] = bright || saturated ? 1 : 0;
+    }
+
+    for (let y = 0; y < frame.h; y += 1) {
+      for (let x = 0; x < frame.w; x += 1) {
+        const index = y * frame.w + x;
+        if (foreground[index]) continue;
+        let touchesForeground = false;
+        for (let oy = -2; oy <= 2 && !touchesForeground; oy += 1) {
+          for (let ox = -2; ox <= 2; ox += 1) {
+            const nx = x + ox;
+            const ny = y + oy;
+            if (nx < 0 || nx >= frame.w || ny < 0 || ny >= frame.h) continue;
+            if (foreground[ny * frame.w + nx]) {
+              touchesForeground = true;
+              break;
+            }
+          }
+        }
+        keepDarkOutline[index] = touchesForeground ? 1 : 0;
+      }
+    }
+
+    for (let i = 0; i < data.length; i += 4) {
+      const pixelIndex = i / 4;
+      if (!foreground[pixelIndex] && !keepDarkOutline[pixelIndex]) data[i + 3] = 0;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
   }
 
   private drawProjectile(projectile: Projectile): void {
