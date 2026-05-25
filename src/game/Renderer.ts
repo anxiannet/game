@@ -387,7 +387,7 @@ export class Renderer {
     const alpha = deathT > 0 ? Math.max(0, 1 - deathEase) : 1;
     const rotation = enemy.visualRotation - enemy.facingX * hitPulse * 0.1 - enemy.facingX * Math.sin(deathT * Math.PI) * 0.22;
     const flashWhite = enemy.flashTimer > 0 && enemy.state !== 'dying' && enemy.state !== 'dead';
-    const kindScale = enemy.kind === 'boss' ? 3.9 : enemy.kind === 'slacker' ? 2.85 : 4.1;
+    const kindScale = enemy.kind === 'boss' ? 3.9 : enemy.kind === 'slacker' ? 4.05 : 4.1;
     const drawHeight = enemy.radius * kindScale;
     const drawWidth = ready ? drawHeight * (image.naturalWidth / image.naturalHeight) : enemy.radius * 2.1;
 
