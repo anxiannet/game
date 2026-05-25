@@ -1,6 +1,31 @@
 import { EnemyKind, MAX_WAVES } from '../game/config';
 import { Enemy } from '../entities/Enemy';
 
+const wavePlans: Array<Partial<Record<EnemyKind, number>>> = [
+  { yellow: 8 },
+  { yellow: 11 },
+  { yellow: 14 },
+  { yellow: 14, slacker: 4 },
+  { yellow: 15, slacker: 5, overtime: 1 },
+  { yellow: 20, slacker: 8, overtime: 2 },
+  { yellow: 18, slacker: 10, overtime: 4 },
+  { yellow: 18, slacker: 10, overtime: 5, requirement: 2 },
+  { yellow: 20, slacker: 12, overtime: 5, requirement: 3 },
+  { boss: 1, yellow: 16, slacker: 10, overtime: 4, requirement: 2 },
+  { yellow: 25, slacker: 16, overtime: 10, requirement: 6 },
+  { yellow: 26, slacker: 18, overtime: 12, requirement: 7 },
+  { yellow: 26, slacker: 20, overtime: 13, requirement: 8 },
+  { yellow: 28, slacker: 20, overtime: 14, requirement: 9 },
+  { boss: 1, yellow: 22, slacker: 16, overtime: 12, requirement: 8 },
+  { yellow: 30, slacker: 22, overtime: 16, requirement: 12 },
+  { yellow: 34, slacker: 24, overtime: 18, requirement: 13 },
+  { yellow: 38, slacker: 26, overtime: 20, requirement: 14 },
+  { yellow: 40, slacker: 28, overtime: 22, requirement: 16 },
+  { boss: 2, yellow: 36, slacker: 28, overtime: 22, requirement: 18 },
+];
+
+const spawnOrder: EnemyKind[] = ['yellow', 'slacker', 'yellow', 'overtime', 'yellow', 'requirement', 'slacker', 'yellow'];
+
 export class WaveSystem {
   wave = 0;
   spawnQueue: EnemyKind[] = [];
@@ -38,15 +63,21 @@ export class WaveSystem {
   }
 
   private makeWave(wave: number): EnemyKind[] {
+    const plan = wavePlans[wave - 1] ?? wavePlans[wavePlans.length - 1];
+    const remaining = { ...plan };
     const enemies: EnemyKind[] = [];
-    const count = wave <= 3 ? 6 + wave * 2 : 10 + wave * 3;
-    if (wave % 10 === 0) enemies.push('boss');
 
-    for (let i = 0; i < count; i += 1) {
-      if (wave <= 3) enemies.push('yellow');
-      else if (wave < 8) enemies.push(i % 4 === 0 ? 'slacker' : 'yellow');
-      else if (wave < 15) enemies.push(i % 5 === 0 ? 'overtime' : i % 3 === 0 ? 'slacker' : 'yellow');
-      else enemies.push(i % 6 === 0 ? 'requirement' : i % 5 === 0 ? 'overtime' : i % 2 === 0 ? 'slacker' : 'yellow');
+    for (let i = 0; i < (plan.boss ?? 0); i += 1) {
+      enemies.push('boss');
+    }
+    remaining.boss = 0;
+
+    while (Object.values(remaining).some((count) => (count ?? 0) > 0)) {
+      for (const kind of spawnOrder) {
+        if ((remaining[kind] ?? 0) <= 0) continue;
+        enemies.push(kind);
+        remaining[kind] = (remaining[kind] ?? 0) - 1;
+      }
     }
     return enemies;
   }

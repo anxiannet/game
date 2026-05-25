@@ -1,6 +1,6 @@
 import { Vec2 } from '../game/config';
 
-export type EffectKind = 'explosion' | 'muzzle' | 'coin' | 'leak' | 'bossWarning' | 'floatingText' | 'spark' | 'frostRing' | 'coffeeSplash';
+export type EffectKind = 'explosion' | 'muzzle' | 'coin' | 'leak' | 'bossWarning' | 'floatingText' | 'spark' | 'frostRing' | 'coffeeSplash' | 'heatWave' | 'steam' | 'electricArc';
 export type EffectVariant = 'damage' | 'critical' | 'coin' | 'warning' | 'machineGun' | 'coffee' | 'frost' | 'bomb' | 'tesla';
 
 export class Effect {

@@ -32,7 +32,6 @@ export function playEnemyDeath(enemy: Enemy, effects: Effect[]): void {
 }
 
 export function playTowerAttack(tower: Tower, targetX: number, targetY: number, effects: Effect[]): void {
-  tower.attackTimer = effectsConfig.towerAttackDuration;
   tower.muzzleTimer = effectsConfig.muzzleFlashDuration;
   tower.attackTarget = { x: targetX, y: targetY };
   const colorByKind = {
@@ -40,7 +39,7 @@ export function playTowerAttack(tower: Tower, targetX: number, targetY: number, 
     coffee: '#f6b84a',
     frost: '#bfdbfe',
     bomb: '#fb923c',
-    tesla: '#c4b5fd',
+    tesla: '#93c5fd',
   };
   effects.push(makeEffect('muzzle', tower.pos, { color: colorByKind[tower.kind], size: tower.kind === 'coffee' ? 42 : 30, maxLife: 0.14, variant: tower.kind }));
 }

@@ -42,6 +42,8 @@ export class Renderer {
   private enemyReady: Partial<Record<keyof typeof assetManifest.enemies, boolean>> = {};
   private towerPartImages: Partial<Record<TowerPartKey, HTMLImageElement>> = {};
   private towerPartReady: Partial<Record<TowerPartKey, boolean>> = {};
+  private specialTowerImages: Partial<Record<'bomb' | 'tesla', HTMLImageElement>> = {};
+  private specialTowerReady: Partial<Record<'bomb' | 'tesla', boolean>> = {};
   private coffeeTowerImage = new Image();
   private coffeeTowerReady = false;
   private yellowMonsterRunFrames?: HTMLCanvasElement[];
@@ -65,6 +67,7 @@ export class Renderer {
     this.coffeeTowerImage.src = assetManifest.towers.coffee;
     this.loadEnemyImages();
     this.loadTowerPartImages();
+    this.loadSpecialTowerImages();
     this.resize();
   }
 
@@ -180,6 +183,15 @@ export class Renderer {
   }
 
   private drawTower(tower: Tower, time: number): void {
+    if (tower.kind === 'coffee') {
+      this.drawCoffeeTower(tower);
+      return;
+    }
+    if ((tower.kind === 'bomb' || tower.kind === 'tesla') && this.specialTowerReady[tower.kind]) {
+      this.drawSpecialTower(tower, time);
+      return;
+    }
+
     const { ctx } = this;
     const cfg = towerConfigs[tower.kind];
     const idleOffsetY = Math.sin(time * 0.004 + tower.idleSeed) * 2;
@@ -226,6 +238,65 @@ export class Renderer {
       ctx.arc(0, 2, levelScale * (54 + Math.sin(time * 0.006 + tower.idleSeed) * 3), 0, Math.PI * 2);
       ctx.stroke();
     }
+    if (tower.coffeeBoostTimer > 0) this.drawCoffeeBoostBadge(tower, time);
+    ctx.restore();
+  }
+
+  private drawCoffeeBoostBadge(tower: Tower, time: number): void {
+    const { ctx } = this;
+    const pulse = 0.7 + Math.sin(time * 0.014 + tower.id) * 0.22;
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.strokeStyle = `rgba(253,230,138,${pulse})`;
+    ctx.lineWidth = 5;
+    ctx.shadowColor = '#f6b84a';
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.arc(0, 2, 62 + Math.sin(time * 0.009 + tower.id) * 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(246,184,74,${0.22 + pulse * 0.12})`;
+    ctx.beginPath();
+    ctx.arc(34, -44, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  private drawSpecialTower(tower: Tower, time: number): void {
+    const { ctx } = this;
+    const image = tower.kind === 'bomb' || tower.kind === 'tesla' ? this.specialTowerImages[tower.kind] : undefined;
+    if (!image) return;
+
+    const cfg = towerConfigs[tower.kind];
+    const idleOffsetY = Math.sin(time * 0.004 + tower.idleSeed) * 2;
+    const levelScale = this.getTowerLevelScale(tower);
+    const attackPulse = tower.state === 'attack' ? 1 + tower.recoil * 0.045 : 1;
+    const attackShake = tower.state === 'attack' ? tower.recoil * 3 : 0;
+    const drawSize = tower.kind === 'bomb' ? 164 : 172;
+
+    ctx.save();
+    ctx.translate(
+      tower.x + (Math.random() - 0.5) * attackShake,
+      tower.y + idleOffsetY + (Math.random() - 0.5) * attackShake,
+    );
+    ctx.scale(levelScale * attackPulse, levelScale * attackPulse);
+    this.drawTowerReadabilityShadow(tower.state === 'attack' ? 0.72 : 0.62);
+    ctx.shadowColor = cfg.color;
+    ctx.shadowBlur = tower.state === 'attack' ? 28 : 14;
+    this.drawImageWithOutline(image, -drawSize / 2, -drawSize + 58, drawSize, drawSize, 5, 0.75);
+    ctx.restore();
+
+    this.drawMuzzleFlash(tower, idleOffsetY, levelScale);
+
+    ctx.save();
+    ctx.translate(tower.x, tower.y);
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = '700 24px system-ui';
+    ctx.textAlign = 'center';
+    ctx.strokeStyle = '#050505';
+    ctx.lineWidth = 5;
+    ctx.strokeText(String(tower.level), 0, 62 * levelScale);
+    ctx.fillText(String(tower.level), 0, 62 * levelScale);
+    if (tower.coffeeBoostTimer > 0) this.drawCoffeeBoostBadge(tower, time);
     ctx.restore();
   }
 
@@ -394,8 +465,8 @@ export class Renderer {
 
     const frameWidth = this.coffeeTowerImage.naturalWidth / 4;
     const frameHeight = this.coffeeTowerImage.naturalHeight / 2;
-    const attacking = tower.attackTimer > 0;
-    const attackProgress = attacking ? 1 - tower.attackTimer / 0.18 : 0;
+    const attacking = tower.recoilTime > 0;
+    const attackProgress = attacking ? 1 - tower.recoilTime / 0.16 : 0;
     const frame = attacking
       ? 4 + Math.min(3, Math.floor(Math.max(0, attackProgress) * 4))
       : Math.floor(tower.animTime * 6) % 4;
@@ -419,6 +490,7 @@ export class Renderer {
     ctx.lineWidth = 5;
     ctx.strokeText(String(tower.level), 0, 62);
     ctx.fillText(String(tower.level), 0, 62);
+    if (tower.coffeeBoostTimer > 0) this.drawCoffeeBoostBadge(tower, performance.now());
     ctx.restore();
   }
 
@@ -553,11 +625,7 @@ export class Renderer {
     ctx.save();
     ctx.translate(enemy.pos.x, enemy.pos.y);
     if (enemy.slowTimer > 0 && enemy.targetable) {
-      ctx.strokeStyle = '#67e8f9';
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.arc(0, enemy.radius * 0.34, enemy.radius + 9 + Math.sin(enemy.animTime * 18) * 2, 0, Math.PI * 2);
-      ctx.stroke();
+      this.drawSlowStatusEffect(enemy);
     }
     if (enemy.burnTimer > 0 && enemy.targetable) {
       ctx.fillStyle = 'rgba(239,68,68,0.74)';
@@ -579,6 +647,70 @@ export class Renderer {
       ctx.fillRect(-enemy.radius, barY, enemy.radius * 2 * Math.max(enemy.healthBar.delayedValue / enemy.healthBar.maxValue, 0), 8);
       ctx.fillStyle = enemy.hp / enemy.maxHp < 0.35 ? '#ef4444' : '#22c55e';
       ctx.fillRect(-enemy.radius, barY, enemy.radius * 2 * Math.max(enemy.healthBar.value / enemy.healthBar.maxValue, 0), 8);
+    }
+    ctx.restore();
+  }
+
+  private drawSlowStatusEffect(enemy: Enemy): void {
+    const { ctx } = this;
+    const image = this.towerPartImages.fanSlowHitEffect;
+    const ready = this.towerPartReady.fanSlowHitEffect && image;
+    const clock = performance.now() / 1000;
+    const pulse = 0.86 + Math.sin(clock * 9 + enemy.id) * 0.08;
+    const size = (enemy.radius * 2.75 + 20) * pulse;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.72;
+    ctx.translate(0, enemy.radius * 0.15);
+    ctx.rotate(clock * 1.7 + enemy.id * 0.3);
+    ctx.shadowColor = '#38d5ff';
+    ctx.shadowBlur = 16;
+    if (ready && image) {
+      ctx.drawImage(image, -size / 2, -size / 2, size, size);
+    } else {
+      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.5);
+      gradient.addColorStop(0, 'rgba(255,255,255,0.55)');
+      gradient.addColorStop(0.42, 'rgba(56,213,255,0.35)');
+      gradient.addColorStop(1, 'rgba(56,213,255,0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.lineCap = 'round';
+    ctx.shadowColor = '#67e8f9';
+    ctx.shadowBlur = 10;
+    for (let i = 0; i < 4; i += 1) {
+      const phase = (clock * 2.4 + i * 0.25 + enemy.id * 0.07) % 1;
+      const y = -enemy.radius * 0.9 + i * enemy.radius * 0.42 + Math.sin(clock * 5 + i) * 5;
+      const startX = -enemy.radius * (1.45 + phase * 0.55);
+      const endX = enemy.radius * (0.8 + phase * 0.65);
+      ctx.globalAlpha = (1 - phase) * 0.52;
+      ctx.strokeStyle = i % 2 === 0 ? '#dffbff' : '#38d5ff';
+      ctx.lineWidth = 4 - phase * 1.8;
+      ctx.beginPath();
+      ctx.moveTo(startX, y);
+      ctx.bezierCurveTo(-enemy.radius * 0.55, y - 12, enemy.radius * 0.18, y + 12, endX, y - 4);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#d9f99d';
+    ctx.globalAlpha = 0.55 + Math.sin(clock * 8 + enemy.id) * 0.18;
+    for (let i = 0; i < 3; i += 1) {
+      const angle = clock * 3.8 + i * 2.1 + enemy.id;
+      const x = Math.cos(angle) * enemy.radius * 1.15;
+      const y = Math.sin(angle * 0.8) * enemy.radius * 0.65 - enemy.radius * 0.2;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 7, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -638,6 +770,17 @@ export class Renderer {
       };
       image.src = assetManifest.towers[part];
       this.towerPartImages[part] = image;
+    });
+  }
+
+  private loadSpecialTowerImages(): void {
+    (['bomb', 'tesla'] as const).forEach((kind) => {
+      const image = new Image();
+      image.onload = () => {
+        this.specialTowerReady[kind] = true;
+      };
+      image.src = assetManifest.towers[kind];
+      this.specialTowerImages[kind] = image;
     });
   }
 
@@ -728,6 +871,11 @@ export class Renderer {
   }
 
   private drawProjectile(projectile: Projectile): void {
+    if (projectile.kind === 'coffee' && projectile.visualOnly) {
+      this.drawCoffeeJet(projectile);
+      return;
+    }
+
     const { ctx } = this;
     const image = projectile.kind === 'machineGun'
       ? this.towerPartImages.machineGunTapeBullet
@@ -777,16 +925,68 @@ export class Renderer {
       ctx.lineWidth = 8;
       ctx.shadowColor = projectile.color;
       ctx.shadowBlur = 18;
-      ctx.beginPath();
       let last = { x: projectile.x, y: projectile.y };
       projectile.chain.forEach((point) => {
-        ctx.moveTo(last.x, last.y);
-        ctx.lineTo(point.x, point.y);
+        this.drawJaggedLine(last, point, 11, 18);
         last = point;
       });
-      ctx.stroke();
+      ctx.globalAlpha = Math.max(0, alpha) * 0.95;
+      ctx.strokeStyle = '#dbeafe';
+      ctx.lineWidth = 3;
+      last = { x: projectile.x, y: projectile.y };
+      projectile.chain.forEach((point) => {
+        this.drawJaggedLine(last, point, 7, 10);
+        last = point;
+      });
       ctx.restore();
     }
+  }
+
+  private drawCoffeeJet(projectile: Projectile): void {
+    const { ctx } = this;
+    const t = projectile.life / projectile.maxLife;
+    const alpha = Math.max(0, 1 - t);
+    const midX = (projectile.from.x + projectile.to.x) / 2;
+    const midY = (projectile.from.y + projectile.to.y) / 2 - 34 - Math.sin(t * Math.PI) * 20;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.globalCompositeOperation = 'screen';
+    ctx.strokeStyle = '#f6b84a';
+    ctx.lineWidth = 14 * (1 - t * 0.55);
+    ctx.lineCap = 'round';
+    ctx.shadowColor = '#f6b84a';
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.moveTo(projectile.from.x, projectile.from.y);
+    ctx.quadraticCurveTo(midX, midY, projectile.to.x, projectile.to.y);
+    ctx.stroke();
+    ctx.strokeStyle = '#fff3b0';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(projectile.from.x, projectile.from.y - 4);
+    ctx.quadraticCurveTo(midX, midY - 12, projectile.to.x, projectile.to.y - 5);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  private drawJaggedLine(from: { x: number; y: number }, to: { x: number; y: number }, steps: number, jitter: number): void {
+    const { ctx } = this;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const nx = -dy / length;
+    const ny = dx / length;
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    for (let i = 1; i < steps; i += 1) {
+      const p = i / steps;
+      const wave = Math.sin((performance.now() * 0.035 + i * 2.7) * (i % 2 ? 1 : -1));
+      const offset = wave * jitter * (0.35 + Math.random() * 0.65);
+      ctx.lineTo(from.x + dx * p + nx * offset, from.y + dy * p + ny * offset);
+    }
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
   }
 
   private drawHitEffect(effect: HitEffect): void {
@@ -903,6 +1103,59 @@ export class Renderer {
       ctx.moveTo(18, 4 - t * 40);
       ctx.lineTo(18, -26 - t * 56);
       ctx.stroke();
+    } else if (effect.kind === 'heatWave') {
+      const radius = effect.size * (0.2 + t * 1.05);
+      ctx.globalCompositeOperation = 'screen';
+      ctx.strokeStyle = `rgba(254,215,170,${0.9 - t * 0.65})`;
+      ctx.lineWidth = 10 * (1 - t);
+      ctx.shadowColor = '#fb923c';
+      ctx.shadowBlur = 30;
+      for (let i = 0; i < 3; i += 1) {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, radius * (1 + i * 0.18), radius * (0.48 + i * 0.12), Math.sin(t * 5 + i) * 0.12, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = `rgba(255,247,237,${0.38 - t * 0.25})`;
+      ctx.lineWidth = 5;
+      for (let i = 0; i < 7; i += 1) {
+        const x = (i - 3) * radius * 0.24;
+        ctx.beginPath();
+        ctx.moveTo(x, radius * 0.28);
+        ctx.bezierCurveTo(x + 14, radius * 0.05, x - 18, -radius * 0.12, x + 10, -radius * 0.32);
+        ctx.stroke();
+      }
+    } else if (effect.kind === 'steam') {
+      ctx.globalCompositeOperation = 'screen';
+      ctx.strokeStyle = `rgba(254,243,199,${0.68 - t * 0.42})`;
+      ctx.lineWidth = 7 * (1 - t * 0.35);
+      ctx.lineCap = 'round';
+      ctx.shadowColor = '#fde68a';
+      ctx.shadowBlur = 15;
+      for (let i = 0; i < 4; i += 1) {
+        const x = (i - 1.5) * 18;
+        ctx.beginPath();
+        ctx.moveTo(x, 16 - t * 20);
+        ctx.bezierCurveTo(x - 18, -8 - t * 28, x + 22, -28 - t * 38, x + Math.sin(t * 6 + i) * 14, -58 - t * 44);
+        ctx.stroke();
+      }
+    } else if (effect.kind === 'electricArc') {
+      ctx.globalCompositeOperation = 'screen';
+      ctx.strokeStyle = effect.color;
+      ctx.lineWidth = 5;
+      ctx.shadowColor = '#60a5fa';
+      ctx.shadowBlur = 20;
+      for (let i = 0; i < 5; i += 1) {
+        const angle = i * 1.26 + t * 4;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * effect.size * 0.2, Math.sin(angle) * effect.size * 0.2);
+        ctx.lineTo(Math.cos(angle + 0.22) * effect.size, Math.sin(angle + 0.22) * effect.size);
+        ctx.lineTo(Math.cos(angle + 0.55) * effect.size * 0.62, Math.sin(angle + 0.55) * effect.size * 0.62);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#dbeafe';
+      ctx.beginPath();
+      ctx.arc(0, 0, effect.size * 0.16, 0, Math.PI * 2);
+      ctx.fill();
     } else {
       const radius = effect.size * (0.1 + t);
       const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);

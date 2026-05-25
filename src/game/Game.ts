@@ -213,7 +213,7 @@ export class Game {
       this.waveDelay -= dt;
       if (this.waveDelay <= 0) {
         const nextWave = this.waves.wave + 1;
-        if (nextWave % 10 === 0) {
+        if (nextWave === 10 || nextWave === 15 || nextWave === 20) {
           this.playBossIntro(nextWave);
           this.waveDelay = 0.8;
           return;

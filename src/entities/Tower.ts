@@ -23,6 +23,8 @@ export class Tower {
   state: 'idle' | 'attack' = 'idle';
   muzzleTimer = 0;
   attackTarget?: Vec2;
+  coffeeBoostTimer = 0;
+  coffeeBoostStrength = 0;
 
   constructor(id: number, kind: TowerKind, pos: Vec2) {
     this.id = id;
@@ -53,7 +55,8 @@ export class Tower {
   }
 
   get fireRate(): number {
-    return towerConfigs[this.kind].fireRate * Math.max(0.72, 1 - (this.level - 1) * 0.08);
+    const levelRate = towerConfigs[this.kind].fireRate * Math.max(0.72, 1 - (this.level - 1) * 0.08);
+    return levelRate * (this.coffeeBoostTimer > 0 ? Math.max(0.52, 1 - this.coffeeBoostStrength) : 1);
   }
 
   get upgradeCost(): number {
@@ -70,6 +73,8 @@ export class Tower {
     this.attackTimer = Math.max(0, this.attackTimer - dt);
     this.muzzleTimer = Math.max(0, this.muzzleTimer - dt);
     this.recoilTime = Math.max(0, this.recoilTime - dt);
+    this.coffeeBoostTimer = Math.max(0, this.coffeeBoostTimer - dt);
+    if (this.coffeeBoostTimer <= 0) this.coffeeBoostStrength = 0;
     this.recoil = Math.max(0, this.recoil - dt * 12);
     this.state = this.recoil > 0.04 || this.recoilTime > 0 ? 'attack' : 'idle';
     this.animState = this.state;

@@ -417,6 +417,14 @@ button {
   box-shadow: inset 0 2px 0 rgba(255,255,255,0.38), 0 0 0 2px var(--tower-color), 0 4px 0 #050505;
 }
 
+.tower-icon img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 0 #050505);
+}
+
 .tower-button strong {
   font-size: 14px;
   line-height: 1;

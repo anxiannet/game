@@ -8,6 +8,10 @@ export const assetManifest = {
     frost: '/assets/towers/fan_slow_icon.png',
     bomb: '/assets/towers/bomb-tower.png',
     tesla: '/assets/towers/tesla-tower.png',
+    coffeeAi: '/assets/towers/coffee-tower-ai.png',
+    microwaveIcon: '/assets/towers/microwave_tower_icon.png',
+    wifiIcon: '/assets/towers/wifi_tower_icon.png',
+    coffeeIcon: '/assets/towers/coffee_tower_icon.png',
     base: '/assets/towers/tower_base.png',
     weapon: '/assets/towers/tower_weapon.png',
     muzzleFlash: '/assets/towers/muzzle_flash.png',
@@ -42,6 +46,9 @@ export const assetManifest = {
   effects: {
     explosion: '/assets/effects/explosion-sheet.png',
     muzzle: '/assets/effects/muzzle-flash.png',
+    microwaveExplosion: '/assets/effects/microwave_explosion_sheet.png',
+    wifiElectricArc: '/assets/effects/wifi_electric_arc_sheet.png',
+    coffeeSpraySteam: '/assets/effects/coffee_spray_steam_sheet.png',
   },
   ui: {
     button: '/assets/ui/button.png',

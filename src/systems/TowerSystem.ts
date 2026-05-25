@@ -20,6 +20,11 @@ export class TowerSystem {
     for (const tower of towers) {
       tower.updateAnimation(dt);
 
+      if (tower.kind === 'coffee') {
+        this.updateCoffeeTower(dt, tower, towers, projectiles, effects);
+        continue;
+      }
+
       const target = this.pickTarget(tower, enemies);
       if (!target) {
         tower.target = null;
@@ -47,6 +52,7 @@ export class TowerSystem {
     for (const projectile of projectiles) {
       projectile.update(dt);
       if (projectile.done) continue;
+      if (projectile.visualOnly) continue;
 
       const hitTarget = this.findBulletHit(projectile, enemies);
       if (!hitTarget) continue;
@@ -65,6 +71,48 @@ export class TowerSystem {
     return enemies
       .filter((enemy) => enemy.targetable && inRange(tower.pos, enemy.pos, tower.range))
       .sort((a, b) => b.progress - a.progress)[0];
+  }
+
+  private updateCoffeeTower(dt: number, tower: Tower, towers: Tower[], projectiles: Projectile[], effects: Effect[]): void {
+    const boostTargets = towers
+      .filter((candidate) => candidate.id !== tower.id && candidate.kind !== 'coffee' && inRange(tower.pos, candidate.pos, tower.range))
+      .sort((a, b) => distance(a.pos, tower.pos) - distance(b.pos, tower.pos))
+      .slice(0, tower.level >= 4 ? 4 : 3);
+
+    if (boostTargets.length === 0) {
+      tower.target = null;
+      tower.attackTarget = undefined;
+      tower.easeHome(dt);
+      return;
+    }
+
+    const primary = boostTargets[0];
+    tower.target = null;
+    tower.aimAt(primary.pos);
+    tower.attackTarget = { ...primary.pos };
+    if (tower.attackTimer > 0) return;
+
+    tower.attackTimer = tower.fireRate;
+    tower.recoil = 1;
+    tower.recoilTime = 0.16;
+    tower.muzzleTimer = 0.16;
+    tower.state = 'attack';
+    effects.push(makeEffect('coffeeSplash', tower.pos, { color: '#f6b84a', size: tower.range * 0.32, maxLife: 0.55, variant: 'coffee' }));
+
+    boostTargets.forEach((target, index) => {
+      target.coffeeBoostTimer = Math.max(target.coffeeBoostTimer, 1.55 + tower.level * 0.18);
+      target.coffeeBoostStrength = Math.max(target.coffeeBoostStrength, 0.2 + tower.level * 0.035);
+      effects.push(makeEffect('steam', target.pos, { color: '#fde68a', size: 48 + target.level * 5, maxLife: 0.68, variant: 'coffee' }));
+      const from = {
+        x: tower.x + Math.cos(tower.angle) * 54,
+        y: tower.y + Math.sin(tower.angle) * 54,
+      };
+      projectiles.push(new Projectile('coffee', from, target.pos, '#f6b84a', 0.34 + index * 0.04, undefined, {
+        angle: Math.atan2(target.y - tower.y, target.x - tower.x),
+        speed: 0,
+        visualOnly: true,
+      }));
+    });
   }
 
   fireBullet(tower: Tower, target: Enemy, enemies: Enemy[], projectiles: Projectile[], effects: Effect[], damageTexts: DamageText[]): void {
@@ -86,9 +134,9 @@ export class TowerSystem {
 
     if (tower.kind === 'tesla') {
       const chain = enemies
-        .filter((enemy) => enemy.targetable && distance(enemy.pos, target.pos) < 210)
+        .filter((enemy) => enemy.targetable && distance(enemy.pos, target.pos) < 230)
         .sort((a, b) => distance(a.pos, target.pos) - distance(b.pos, target.pos))
-        .slice(0, 4);
+        .slice(0, tower.level >= 4 ? 5 : 4);
       bullet.chain = chain.map((enemy) => enemy.pos);
     }
     projectiles.push(bullet);
@@ -116,24 +164,18 @@ export class TowerSystem {
       });
     } else if (tower.kind === 'bomb') {
       playBombExplosion(target.pos.x, target.pos.y, effects);
+      effects.push(makeEffect('heatWave', target.pos, { color: '#fed7aa', size: 138, maxLife: 0.52, variant: 'bomb', shake: tower.level >= 3 }));
       enemies.forEach((enemy) => {
-        if (enemy.targetable && distance(enemy.pos, target.pos) < 118) this.damageEnemy(enemy, tower.damage, effects, damageTexts, tower.level >= 4);
+        if (enemy.targetable && distance(enemy.pos, target.pos) < 126) this.damageEnemy(enemy, tower.damage, effects, damageTexts, tower.level >= 4);
       });
     } else if (tower.kind === 'tesla') {
       const chain = enemies
-        .filter((enemy) => enemy.targetable && distance(enemy.pos, target.pos) < 210)
+        .filter((enemy) => enemy.targetable && distance(enemy.pos, target.pos) < 230)
         .sort((a, b) => distance(a.pos, target.pos) - distance(b.pos, target.pos))
-        .slice(0, 4);
-      chain.forEach((enemy, index) => this.damageEnemy(enemy, tower.damage * (1 - index * 0.18), effects, damageTexts));
-    } else if (tower.kind === 'coffee') {
-      this.damageEnemy(target, tower.damage, effects, damageTexts, Math.random() < 0.14);
-      target.applySlow(0.85);
-      effects.push(makeEffect('coffeeSplash', target.pos, { color: '#f6b84a', size: 58, maxLife: 0.42, variant: 'coffee', shake: tower.level >= 4 }));
-      enemies.forEach((enemy) => {
-        if (enemy !== target && enemy.targetable && distance(enemy.pos, target.pos) < 82) {
-          this.damageEnemy(enemy, tower.damage * 0.38, effects, damageTexts);
-          enemy.applySlow(0.55);
-        }
+        .slice(0, tower.level >= 4 ? 5 : 4);
+      chain.forEach((enemy, index) => {
+        this.damageEnemy(enemy, tower.damage * (1 - index * 0.16), effects, damageTexts);
+        effects.push(makeEffect('electricArc', enemy.pos, { color: '#93c5fd', size: enemy.radius + 28, maxLife: 0.18 + index * 0.03, variant: 'tesla' }));
       });
     } else {
       this.damageEnemy(target, tower.damage, effects, damageTexts, Math.random() < 0.08);

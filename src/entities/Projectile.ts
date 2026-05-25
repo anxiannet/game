@@ -16,6 +16,7 @@ export class Projectile {
   maxLife: number;
   color: string;
   chain?: Vec2[];
+  visualOnly = false;
   hit?: (enemy: Enemy) => void;
   done = false;
 
@@ -26,7 +27,7 @@ export class Projectile {
     color: string,
     maxLife = 0.18,
     chain?: Vec2[],
-    options: { angle?: number; damage?: number; speed?: number; target?: Enemy; hit?: (enemy: Enemy) => void } = {},
+    options: { angle?: number; damage?: number; speed?: number; target?: Enemy; hit?: (enemy: Enemy) => void; visualOnly?: boolean } = {},
   ) {
     this.kind = kind;
     this.from = { ...from };
@@ -43,6 +44,7 @@ export class Projectile {
     this.maxLife = maxLife;
     this.chain = chain;
     this.hit = options.hit;
+    this.visualOnly = options.visualOnly ?? false;
   }
 
   update(dt: number): void {
