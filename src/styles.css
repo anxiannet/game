@@ -216,6 +216,7 @@ button {
   overflow: hidden;
   color: #fff3df;
   background: linear-gradient(180deg, #2b2b2b, #111);
+  isolation: isolate;
 }
 
 .hp-meter strong::before {
@@ -227,6 +228,7 @@ button {
     linear-gradient(90deg, rgba(255,255,255,0.24), transparent 22%),
     linear-gradient(180deg, #ff4a24, #9c160d);
   transition: width 0.18s ease-out;
+  z-index: 0;
 }
 
 .hp-meter strong::after {
@@ -236,6 +238,17 @@ button {
   border-radius: 3px;
   border: 1px solid rgba(255, 238, 205, 0.22);
   pointer-events: none;
+  z-index: 2;
+}
+
+.hp-meter .hp-text {
+  position: relative;
+  z-index: 1;
+  display: block;
+  color: #fffaf0;
+  font-size: 14px;
+  line-height: 1.05;
+  text-shadow: 1px 1px 0 #050505, -1px -1px 0 #050505, 0 2px 0 #050505;
 }
 
 .coin-meter strong {
@@ -422,11 +435,52 @@ button {
   opacity: 1;
 }
 
+.tower-button.can-buy {
+  filter: saturate(1.22) brightness(1.12);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.62),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.34),
+    0 3px 0 #050505,
+    0 0 16px color-mix(in srgb, var(--tower-color) 68%, transparent),
+    0 7px 16px rgba(0, 0, 0, 0.52);
+}
+
+.tower-button.can-buy .tower-icon {
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,0.46),
+    0 0 0 2px var(--tower-color),
+    0 0 14px color-mix(in srgb, var(--tower-color) 72%, transparent),
+    0 4px 0 #050505;
+}
+
+.tower-button.selected-build {
+  transform: translateY(-5px);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.68),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.32),
+    0 5px 0 #050505,
+    0 0 22px color-mix(in srgb, var(--tower-color) 82%, transparent),
+    0 11px 18px rgba(0, 0, 0, 0.58);
+}
+
+.tower-button.selected-build .tower-icon {
+  outline: 3px solid #fff7ad;
+  outline-offset: 2px;
+}
+
+.tower-button.cant-buy .tower-icon img,
+.tower-button.cant-buy strong,
+.tower-button.cant-buy small {
+  opacity: 0.62;
+}
+
 .tower-icon {
+  position: relative;
   width: 50px;
   height: 42px;
   display: grid;
   place-items: center;
+  overflow: hidden;
   border-radius: 8px;
   background:
     radial-gradient(circle at 40% 28%, rgba(255,248,216,0.4) 0 16%, transparent 17%),
@@ -437,6 +491,30 @@ button {
   font-weight: 1000;
   text-shadow: 2px 2px 0 #050505;
   box-shadow: inset 0 2px 0 rgba(255,255,255,0.38), 0 0 0 2px var(--tower-color), 0 4px 0 #050505;
+}
+
+.buy-countdown {
+  position: absolute;
+  width: 31px;
+  height: 31px;
+  right: 3px;
+  bottom: 3px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #121212 0 48%, transparent 50%),
+    conic-gradient(var(--tower-color) var(--buy-progress), rgba(255,255,255,0.18) 0);
+  border: 2px solid #060606;
+  box-shadow: 0 2px 0 #050505, 0 0 8px rgba(0, 0, 0, 0.68);
+  pointer-events: none;
+}
+
+.buy-countdown::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: var(--tower-color);
+  box-shadow: 0 0 7px var(--tower-color);
 }
 
 .tower-icon img {
@@ -525,14 +603,70 @@ button {
 }
 
 .tower-actions .metal-button {
-  min-width: 104px;
+  flex: 0 0 132px;
+  min-width: 132px;
   height: 54px;
   padding: 0 14px 8px;
   font-size: 20px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tower-actions .metal-button:disabled {
+  filter: saturate(0.55) brightness(0.78);
+  opacity: 1;
 }
 
 .tower-actions .metal-button span {
   font-size: 24px;
+}
+
+.upgrade-action {
+  flex: 0 0 132px;
+  display: grid;
+  gap: 5px;
+}
+
+.upgrade-action .metal-button {
+  width: 100%;
+}
+
+.upgrade-progress {
+  position: relative;
+  height: 15px;
+  overflow: hidden;
+  border: 2px solid #050505;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #262626, #0d0d0d);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.13), 0 2px 0 #050505;
+}
+
+.upgrade-progress::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--upgrade-progress, 0%);
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.22), transparent 24%),
+    linear-gradient(180deg, #facc15, #ca8a04);
+}
+
+.upgrade-progress.full::before {
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.24), transparent 24%),
+    linear-gradient(180deg, #86efac, #16a34a);
+}
+
+.upgrade-progress span {
+  position: relative;
+  z-index: 1;
+  display: block;
+  color: #fff8e8;
+  font-size: 10px;
+  line-height: 12px;
+  text-align: center;
+  white-space: nowrap;
+  text-shadow: 1px 1px 0 #050505, -1px -1px 0 #050505;
 }
 
 .metal-button span {
@@ -655,80 +789,10 @@ button {
   text-shadow: 2px 2px 0 #050505;
 }
 
-.layout-share-card {
-  margin-top: 10px;
-  display: grid;
-  gap: 7px;
-  padding: 10px;
-  border: 2px solid #050505;
-  border-radius: 8px;
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.12), transparent 24%),
-    linear-gradient(180deg, rgba(35, 39, 42, 0.96), rgba(9, 9, 9, 0.96));
-  box-shadow: inset 0 2px 0 rgba(255,255,255,0.16);
-}
-
-.layout-share-card > strong {
-  color: #ffcf3a;
-  font-size: 16px;
-  line-height: 1;
-  text-shadow: 2px 2px 0 #050505;
-}
-
-.layout-map {
-  position: relative;
-  width: 100%;
-  height: 132px;
-  border: 2px solid #070707;
-  border-radius: 6px;
-  overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(255,255,255,0.04) 1px, transparent 1px),
-    radial-gradient(circle at 55% 38%, rgba(245, 158, 11, 0.18), transparent 22%),
-    linear-gradient(180deg, #24272b, #101114);
-  background-size: 42px 42px, 42px 42px, auto, auto;
-}
-
-.layout-spot {
-  position: absolute;
-  width: 25px;
-  height: 25px;
-  display: grid;
-  place-items: center;
-  transform: translate(-50%, -50%);
-  border: 2px solid #050505;
-  border-radius: 50%;
-  background: #454545;
-  color: #ddd6c4;
-  font-size: 11px;
-  font-weight: 1000;
-  line-height: 1;
-  box-shadow: 0 2px 0 #050505;
-}
-
-.layout-spot.filled {
-  border-radius: 7px;
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.35), transparent 28%),
-    linear-gradient(180deg, #ffcc35, #d96f08 64%, #5c2705);
-  color: #fff9e8;
-  font-size: 14px;
-  text-shadow: 1px 1px 0 #050505, -1px -1px 0 #050505;
-  box-shadow: 0 2px 0 #050505, 0 0 12px rgba(245, 158, 11, 0.65);
-}
-
-.layout-share-card small {
-  color: #f8e8bd;
-  font-size: 11px;
-  line-height: 1.25;
-  font-weight: 900;
-}
-
 .result-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: 1fr;
+  gap: 9px;
 }
 
 .result-actions .metal-button {
@@ -965,8 +1029,28 @@ button {
     font-size: 12px;
   }
 
+  .tower-actions {
+    gap: 6px;
+  }
+
+  .tower-actions .metal-button {
+    flex-basis: 118px;
+    min-width: 118px;
+    height: 50px;
+    padding: 0 10px 7px;
+    font-size: 18px;
+  }
+
+  .upgrade-action {
+    flex-basis: 118px;
+  }
+
+  .tower-actions .metal-button span {
+    font-size: 21px;
+  }
+
   .tower-button {
-    grid-template-rows: 36px 17px 15px;
+    grid-template-rows: 40px 17px 15px;
     padding-top: 6px;
   }
 

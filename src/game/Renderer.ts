@@ -72,6 +72,9 @@ export class Renderer {
   private slackerMonsterRunFrames?: HTMLCanvasElement[];
   private slackerMonsterHitFrames?: HTMLCanvasElement[];
   private slackerMonsterDeathFrames?: HTMLCanvasElement[];
+  private fps = 0;
+  private fpsFrames = 0;
+  private fpsLastTime = performance.now();
 
   constructor(private canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -112,6 +115,7 @@ export class Renderer {
     drawParticles(ctx, snapshot.particles);
     drawDamageTexts(ctx, snapshot.damageTexts);
     snapshot.effects.forEach((effect) => this.drawEffect(effect));
+    this.drawMonitorFps(time);
     if (snapshot.phase === 'playing') {
       snapshot.towers.forEach((tower) => {
         if (tower.level < MAX_TOWER_LEVEL && snapshot.coins >= tower.upgradeCost) this.drawTowerUpgradeHint(tower, time);
@@ -124,6 +128,39 @@ export class Renderer {
     if (snapshot.bossWarning > 0) this.drawBossWarning(snapshot.bossWarning);
     if (snapshot.bossIntro > 0) this.drawBossIntro(snapshot.bossIntro, snapshot.bossIntroTotal);
     this.drawBossHealth(snapshot.enemies);
+  }
+
+  private drawMonitorFps(time: number): void {
+    this.fpsFrames += 1;
+    const elapsed = time - this.fpsLastTime;
+    if (elapsed >= 300) {
+      this.fps = Math.round((this.fpsFrames * 1000) / elapsed);
+      this.fpsFrames = 0;
+      this.fpsLastTime = time;
+    }
+
+    const { ctx } = this;
+    ctx.save();
+    ctx.translate(540, 1518);
+    ctx.rotate(-0.005);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.shadowColor = '#38d5ff';
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = 'rgba(2, 8, 12, 0.82)';
+    ctx.strokeStyle = 'rgba(56, 213, 255, 0.62)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(-88, -34, 176, 68, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = this.fps >= 50 ? '#86efac' : this.fps >= 35 ? '#fde68a' : '#fca5a5';
+    ctx.font = '900 28px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${this.fps} FPS`, 0, 0);
+    ctx.restore();
   }
 
   private drawBackground(): void {
@@ -183,11 +220,13 @@ export class Renderer {
     const { ctx } = this;
     buildSpots.forEach((spot, index) => {
       const built = snapshot.towers.some((tower) => tower.pos.x === spot.x && tower.pos.y === spot.y);
+      const selected = snapshot.selectedSpot === index;
+      const pendingBuild = snapshot.selectedBuildKind !== undefined && !built;
       ctx.save();
       ctx.translate(spot.x, spot.y);
-      ctx.fillStyle = snapshot.selectedSpot === index ? 'rgba(251,191,36,0.32)' : 'rgba(15,23,42,0.2)';
-      ctx.strokeStyle = built ? 'rgba(251,191,36,0.18)' : 'rgba(255,255,255,0.85)';
-      ctx.lineWidth = snapshot.selectedSpot === index ? 8 : 5;
+      ctx.fillStyle = selected ? 'rgba(251,191,36,0.32)' : pendingBuild ? 'rgba(56,213,255,0.16)' : 'rgba(15,23,42,0.2)';
+      ctx.strokeStyle = built ? 'rgba(251,191,36,0.18)' : pendingBuild ? 'rgba(56,213,255,0.92)' : 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = selected || pendingBuild ? 8 : 5;
       ctx.setLineDash([18, 12]);
       ctx.beginPath();
       ctx.roundRect(-45, -45, 90, 90, 14);
@@ -195,7 +234,7 @@ export class Renderer {
       ctx.stroke();
       ctx.setLineDash([]);
       if (!built) {
-        ctx.fillStyle = snapshot.selectedSpot === index ? 'rgba(251,191,36,0.95)' : 'rgba(255,255,255,0.82)';
+        ctx.fillStyle = selected ? 'rgba(251,191,36,0.95)' : pendingBuild ? 'rgba(125,211,252,0.95)' : 'rgba(255,255,255,0.82)';
         ctx.fillRect(-21, -5, 42, 10);
         ctx.fillRect(-5, -21, 10, 42);
       }
@@ -281,7 +320,7 @@ export class Renderer {
     const recoilX = attacking ? -Math.cos(tower.angle) * tower.recoil * 7 : 0;
     const recoilY = attacking ? -Math.sin(tower.angle) * tower.recoil * 7 : idleBob;
     const scale = levelScale * (attacking ? 1 + attackKick * 0.045 : 1 + idlePulse * 0.018);
-    const drawSize = tower.kind === 'machineGun' || tower.kind === 'frost' ? 154 : 166;
+    const drawSize = 166;
 
     ctx.save();
     ctx.translate(tower.x + recoilX, tower.y + recoilY);
@@ -372,8 +411,8 @@ export class Renderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = 4;
-    ctx.strokeText('可升', 0, 25);
-    ctx.fillText('可升', 0, 25);
+    ctx.strokeText('升级', 0, 25);
+    ctx.fillText('升级', 0, 25);
     ctx.restore();
   }
 
@@ -775,12 +814,20 @@ export class Renderer {
       this.drawSlowStatusEffect(enemy);
     }
     if (enemy.burnTimer > 0 && enemy.targetable) {
-      ctx.fillStyle = 'rgba(239,68,68,0.74)';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 12;
+      const boosted = enemy.burnFanTimer > 0;
+      ctx.fillStyle = boosted ? 'rgba(251,146,60,0.9)' : 'rgba(239,68,68,0.74)';
+      ctx.shadowColor = boosted ? '#fb923c' : '#ef4444';
+      ctx.shadowBlur = boosted ? 22 : 12;
       ctx.beginPath();
-      ctx.arc(0, -enemy.radius * 2.05, 8, 0, Math.PI * 2);
+      ctx.arc(0, -enemy.radius * 2.05, boosted ? 11 : 8, 0, Math.PI * 2);
       ctx.fill();
+      if (boosted) {
+        ctx.strokeStyle = 'rgba(255,247,237,0.78)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, -enemy.radius * 2.05, 17 + Math.sin(performance.now() / 55) * 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
     const showBar = enemy.kind !== 'boss' && enemy.targetable && (enemy.hitTimer > 0 || enemy.healthBar.showTimer > 0 || enemy.hp < enemy.maxHp);
     if (showBar) {
@@ -1060,6 +1107,10 @@ export class Renderer {
       this.drawCoffeeJet(projectile);
       return;
     }
+    if (projectile.kind === 'bomb') {
+      this.drawBurntEggProjectile(projectile);
+      return;
+    }
 
     const { ctx } = this;
     const image = projectile.kind === 'machineGun'
@@ -1085,15 +1136,15 @@ export class Renderer {
     ctx.translate(projectile.x, projectile.y);
     ctx.rotate(projectile.angle);
     if (ready && image) {
-      const width = projectile.kind === 'machineGun' ? 54 : projectile.kind === 'frost' ? 72 : projectile.kind === 'bomb' ? 46 : projectile.kind === 'tesla' ? 58 : 36;
-      const height = projectile.kind === 'machineGun' ? 22 : projectile.kind === 'frost' ? 46 : projectile.kind === 'bomb' ? 32 : 18;
+      const width = projectile.kind === 'machineGun' ? 54 : projectile.kind === 'frost' ? 72 : projectile.kind === 'tesla' ? 58 : 36;
+      const height = projectile.kind === 'machineGun' ? 22 : projectile.kind === 'frost' ? 46 : 18;
       ctx.drawImage(image, -width / 2, -height / 2, width, height);
       ctx.globalCompositeOperation = 'screen';
       ctx.globalAlpha = Math.max(0, alpha) * 0.55;
       ctx.fillStyle = projectile.color;
       ctx.fillRect(-width * 0.24, -height * 0.25, width * 0.7, height * 0.5);
     } else {
-      const length = projectile.kind === 'tesla' ? 42 : projectile.kind === 'bomb' ? 24 : 34;
+      const length = projectile.kind === 'tesla' ? 42 : 34;
       ctx.strokeStyle = projectile.color;
       ctx.lineWidth = projectile.kind === 'tesla' ? 10 : projectile.kind === 'machineGun' ? 5 : 7;
       ctx.beginPath();
@@ -1102,7 +1153,7 @@ export class Renderer {
       ctx.stroke();
       ctx.fillStyle = '#fff7ad';
       ctx.beginPath();
-      ctx.arc(length * 0.28, 0, projectile.kind === 'bomb' ? 12 : 5, 0, Math.PI * 2);
+      ctx.arc(length * 0.28, 0, 5, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
@@ -1129,6 +1180,57 @@ export class Renderer {
       });
       ctx.restore();
     }
+  }
+
+  private drawBurntEggProjectile(projectile: Projectile): void {
+    const { ctx } = this;
+    const progress = Math.max(0, Math.min(1, projectile.life / projectile.maxLife));
+    const alpha = Math.max(0, 1 - progress * 0.35);
+    const spin = projectile.spin ? projectile.life * projectile.spin : projectile.life * 8;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(projectile.x, projectile.y);
+    ctx.rotate(projectile.angle + spin);
+    ctx.shadowColor = '#fb923c';
+    ctx.shadowBlur = 22;
+
+    const eggGradient = ctx.createRadialGradient(-8, -7, 2, 0, 0, 27);
+    eggGradient.addColorStop(0, '#fff7d6');
+    eggGradient.addColorStop(0.48, '#f5e1a5');
+    eggGradient.addColorStop(0.76, '#b7791f');
+    eggGradient.addColorStop(1, '#1f1208');
+    ctx.fillStyle = eggGradient;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 31, 22, -0.22, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#2a170b';
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.shadowColor = '#facc15';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(4, -2, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#5b2508';
+    ctx.globalAlpha = alpha * 0.86;
+    ctx.beginPath();
+    ctx.arc(-14, -8, 6, 0, Math.PI * 2);
+    ctx.arc(16, 8, 5, 0, Math.PI * 2);
+    ctx.arc(-3, 13, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = alpha * 0.9;
+    ctx.strokeStyle = '#fed7aa';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-24, -4);
+    ctx.quadraticCurveTo(-11, -18, 9, -16);
+    ctx.stroke();
+    ctx.restore();
   }
 
   private drawCoffeeJet(projectile: Projectile): void {

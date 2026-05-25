@@ -20,6 +20,8 @@ export class Enemy {
   slowTimer = 0;
   burnTimer = 0;
   burnDps = 0;
+  burnFanTimer = 0;
+  burnFanMultiplier = 1;
   pauseTimer = 0;
   progress = 0;
   animTime = 0;
@@ -91,9 +93,10 @@ export class Enemy {
 
     if (this.burnTimer > 0) {
       this.burnTimer -= dt;
-      this.takeDamage(this.burnDps * dt);
+      this.takeDamage(this.burnDps * (this.burnFanTimer > 0 ? this.burnFanMultiplier : 1) * dt);
       if (this.hp <= 0) return;
     }
+    if (this.burnFanTimer > 0) this.burnFanTimer -= dt;
     if (this.slowTimer > 0) this.slowTimer -= dt;
     if (this.hitTimer > 0) {
       this.hitTimer = Math.max(0, this.hitTimer - dt);
@@ -154,6 +157,13 @@ export class Enemy {
 
   applyBurn(dps: number, seconds: number): void {
     this.burnDps = Math.max(this.burnDps, dps);
+    this.burnTimer = Math.max(this.burnTimer, seconds);
+  }
+
+  fanTheFlames(seconds: number, multiplier: number): void {
+    if (this.burnTimer <= 0) return;
+    this.burnFanTimer = Math.max(this.burnFanTimer, seconds);
+    this.burnFanMultiplier = Math.max(this.burnFanMultiplier, multiplier);
     this.burnTimer = Math.max(this.burnTimer, seconds);
   }
 

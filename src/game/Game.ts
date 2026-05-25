@@ -42,6 +42,10 @@ export type GameStats = {
   speed: number;
   towerLayout: TowerLayoutItem[];
   selectedTowerCanUpgrade?: boolean;
+  selectedTowerIsMaxLevel?: boolean;
+  selectedTowerUpgradeCost?: number;
+  selectedTowerUpgradeProgress?: number;
+  selectedBuildKind?: TowerKind;
   selectedSpot?: number;
   selectedTower?: number;
   title?: string;
@@ -79,6 +83,7 @@ export class Game {
   private damageTexts: DamageText[] = [];
   private selectedSpot?: number;
   private selectedTower?: number;
+  private selectedBuildKind?: TowerKind;
   private towerId = 1;
   private baseHp = 10;
   private kills = 0;
@@ -127,29 +132,53 @@ export class Game {
   }
 
   buildTower(kind: TowerKind): void {
-    if (this.phase !== 'playing' || this.selectedSpot === undefined) return;
-    if (this.towers.some((tower) => tower.pos.x === buildSpots[this.selectedSpot!].x && tower.pos.y === buildSpots[this.selectedSpot!].y)) return;
+    if (this.phase !== 'playing') return;
+    if (this.selectedSpot === undefined) {
+      if (this.economy.coins < towerConfigs[kind].price) {
+        this.bumpShake(10);
+        return;
+      }
+      this.selectedBuildKind = kind;
+      this.selectedTower = undefined;
+      this.emitStats();
+      return;
+    }
+    this.deployTower(kind, this.selectedSpot);
+  }
+
+  private deployTower(kind: TowerKind, spotIndex: number): boolean {
+    if (this.towers.some((tower) => tower.pos.x === buildSpots[spotIndex].x && tower.pos.y === buildSpots[spotIndex].y)) return false;
     const cost = towerConfigs[kind].price;
     if (!this.economy.spend(cost)) {
       this.bumpShake(10);
-      return;
+      return false;
     }
-    this.towers.push(new Tower(this.towerId++, kind, buildSpots[this.selectedSpot]));
-    this.effects.push(makeEffect('coin', buildSpots[this.selectedSpot], { text: `-${cost}`, color: '#f97316' }));
+    this.towers.push(new Tower(this.towerId++, kind, buildSpots[spotIndex]));
+    this.effects.push(makeEffect('coin', buildSpots[spotIndex], { text: `-${cost}`, color: '#f97316' }));
     this.selectedSpot = undefined;
+    this.selectedBuildKind = undefined;
     this.emitStats();
+    return true;
   }
 
   upgradeSelected(): void {
     const tower = this.towers.find((item) => item.id === this.selectedTower);
-    if (!tower || tower.level >= MAX_TOWER_LEVEL) return;
+    if (!tower) return;
+    this.upgradeTower(tower);
+  }
+
+  private upgradeTower(tower: Tower): boolean {
+    if (tower.level >= MAX_TOWER_LEVEL) return false;
     if (!this.economy.spend(tower.upgradeCost)) {
       this.bumpShake(10);
-      return;
+      return false;
     }
     tower.level += 1;
     this.effects.push(makeEffect('coin', tower.pos, { text: `Lv.${tower.level}`, color: '#fbbf24' }));
+    this.selectedTower = tower.id;
+    this.selectedSpot = undefined;
     this.emitStats();
+    return true;
   }
 
   sellSelected(): void {
@@ -185,6 +214,7 @@ export class Game {
     this.damageTexts = [];
     this.selectedSpot = undefined;
     this.selectedTower = undefined;
+    this.selectedBuildKind = undefined;
     this.baseHp = 10;
     this.kills = 0;
     this.phase = 'playing';
@@ -309,18 +339,41 @@ export class Game {
 
   private handleTap = (point: Vec2): void => {
     if (this.phase !== 'playing') return;
+    const upgradeTower = this.towers.find((item) => this.canUpgradeNow(item) && this.isUpgradeTap(point, item));
+    if (upgradeTower) {
+      this.upgradeTower(upgradeTower);
+      return;
+    }
+
     const tower = this.towers.find((item) => Math.hypot(item.pos.x - point.x, item.pos.y - point.y) < 70);
     if (tower) {
       this.selectedTower = tower.id;
       this.selectedSpot = undefined;
+      this.selectedBuildKind = undefined;
       this.emitStats();
       return;
     }
     const spotIndex = buildSpots.findIndex((spot) => Math.hypot(spot.x - point.x, spot.y - point.y) < 72);
+    if (spotIndex >= 0 && this.selectedBuildKind !== undefined) {
+      this.deployTower(this.selectedBuildKind, spotIndex);
+      return;
+    }
     this.selectedSpot = spotIndex >= 0 ? spotIndex : undefined;
     this.selectedTower = undefined;
+    if (spotIndex < 0) this.selectedBuildKind = undefined;
     this.emitStats();
   };
+
+  private canUpgradeNow(tower: Tower): boolean {
+    return tower.level < MAX_TOWER_LEVEL && this.economy.coins >= tower.upgradeCost;
+  }
+
+  private isUpgradeTap(point: Vec2, tower: Tower): boolean {
+    const onTower = Math.hypot(tower.pos.x - point.x, tower.pos.y - point.y) < 70;
+    const hintCenter = { x: tower.x + 48, y: tower.y - 78 };
+    const onHint = Math.abs(point.x - hintCenter.x) <= 44 && Math.abs(point.y - hintCenter.y) <= 42;
+    return onTower || onHint;
+  }
 
   private bumpShake(amount: number): void {
     this.screenShake.screenShake({ duration: 0.14, intensity: amount });
@@ -420,7 +473,15 @@ export class Game {
       })),
       selectedSpot: this.selectedSpot,
       selectedTower: this.selectedTower,
-      selectedTowerCanUpgrade: selectedTower ? selectedTower.level < MAX_TOWER_LEVEL : undefined,
+      selectedBuildKind: this.selectedBuildKind,
+      selectedTowerCanUpgrade: selectedTower ? this.canUpgradeNow(selectedTower) : undefined,
+      selectedTowerIsMaxLevel: selectedTower ? selectedTower.level >= MAX_TOWER_LEVEL : undefined,
+      selectedTowerUpgradeCost: selectedTower && selectedTower.level < MAX_TOWER_LEVEL ? selectedTower.upgradeCost : undefined,
+      selectedTowerUpgradeProgress: selectedTower
+        ? selectedTower.level >= MAX_TOWER_LEVEL
+          ? 1
+          : Math.min(this.economy.coins / selectedTower.upgradeCost, 1)
+        : undefined,
       title: this.makeTitle(),
     };
   }

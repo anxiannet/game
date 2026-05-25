@@ -19,6 +19,8 @@ export class Projectile {
   visualOnly = false;
   hit?: (enemy: Enemy) => void;
   done = false;
+  arcHeight = 0;
+  spin = 0;
 
   constructor(
     kind: TowerKind,
@@ -27,7 +29,7 @@ export class Projectile {
     color: string,
     maxLife = 0.18,
     chain?: Vec2[],
-    options: { angle?: number; damage?: number; speed?: number; target?: Enemy; hit?: (enemy: Enemy) => void; visualOnly?: boolean } = {},
+    options: { angle?: number; arcHeight?: number; damage?: number; speed?: number; spin?: number; target?: Enemy; hit?: (enemy: Enemy) => void; visualOnly?: boolean } = {},
   ) {
     this.kind = kind;
     this.from = { ...from };
@@ -45,12 +47,26 @@ export class Projectile {
     this.chain = chain;
     this.hit = options.hit;
     this.visualOnly = options.visualOnly ?? false;
+    this.arcHeight = options.arcHeight ?? 0;
+    this.spin = options.spin ?? 0;
   }
 
   update(dt: number): void {
     this.life += dt;
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
+    if (this.arcHeight > 0) {
+      const progress = Math.max(0, Math.min(1, this.life / this.maxLife));
+      const nextProgress = Math.max(0, Math.min(1, (this.life + 0.016) / this.maxLife));
+      const arc = Math.sin(progress * Math.PI) * this.arcHeight;
+      const nextArc = Math.sin(nextProgress * Math.PI) * this.arcHeight;
+      const nextX = this.from.x + (this.to.x - this.from.x) * nextProgress;
+      const nextY = this.from.y + (this.to.y - this.from.y) * nextProgress - nextArc;
+      this.x = this.from.x + (this.to.x - this.from.x) * progress;
+      this.y = this.from.y + (this.to.y - this.from.y) * progress - arc;
+      this.angle = Math.atan2(nextY - this.y, nextX - this.x);
+    } else {
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+    }
     if (this.life >= this.maxLife) this.done = true;
   }
 }

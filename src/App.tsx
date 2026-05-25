@@ -50,7 +50,8 @@ export default function App() {
         />
         <TowerBar
           coins={stats.coins}
-          canBuild={stats.selectedSpot !== undefined && stats.phase === 'playing'}
+          canBuild={stats.phase === 'playing'}
+          selectedKind={stats.selectedBuildKind}
           onBuild={(kind) => gameRef.current?.buildTower(kind)}
         />
         <ResultScreen stats={stats} onRestart={() => gameRef.current?.restart()} />

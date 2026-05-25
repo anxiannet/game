@@ -51,15 +51,19 @@ export class TowerSystem {
   updateBullets(dt: number, projectiles: Projectile[], enemies: Enemy[], hitEffects: HitEffect[]): void {
     for (const projectile of projectiles) {
       projectile.update(dt);
-      if (projectile.done) continue;
       if (projectile.visualOnly) continue;
 
       const hitTarget = this.findBulletHit(projectile, enemies);
-      if (!hitTarget) continue;
+      if (!hitTarget) {
+        if (projectile.done && projectile.kind === 'bomb' && projectile.target) projectile.hit?.(projectile.target);
+        continue;
+      }
 
       projectile.done = true;
       projectile.hit?.(hitTarget);
-      this.createHitEffect(hitEffects, { x: projectile.x, y: projectile.y }, projectile.kind);
+      if (projectile.kind !== 'bomb') {
+        this.createHitEffect(hitEffects, { x: projectile.x, y: projectile.y }, projectile.kind);
+      }
     }
   }
 
@@ -122,11 +126,13 @@ export class TowerSystem {
       x: tower.x + Math.cos(tower.angle) * weaponLength,
       y: tower.y + Math.sin(tower.angle) * weaponLength,
     };
-    const maxLife = tower.kind === 'bomb' ? 0.92 : tower.kind === 'coffee' ? 0.55 : 0.62;
-    const speed = tower.kind === 'bomb' ? 430 : tower.kind === 'frost' ? 460 : 620;
+    const maxLife = tower.kind === 'bomb' ? 0.72 : tower.kind === 'coffee' ? 0.55 : 0.62;
+    const speed = tower.kind === 'bomb' ? 0 : tower.kind === 'frost' ? 460 : 620;
     const bullet = new Projectile(tower.kind, muzzle, target.pos, cfg.color, maxLife, undefined, {
       angle: tower.angle,
+      arcHeight: tower.kind === 'bomb' ? 138 : 0,
       damage: tower.damage,
+      spin: tower.kind === 'bomb' ? (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 3) : 0,
       speed,
       target,
       hit: (hitTarget) => this.applyBulletHit(tower, hitTarget, enemies, effects, damageTexts),
@@ -147,6 +153,9 @@ export class TowerSystem {
   }
 
   private findBulletHit(projectile: Projectile, enemies: Enemy[]): Enemy | undefined {
+    if (projectile.kind === 'bomb' && projectile.target?.targetable && projectile.life / projectile.maxLife >= 0.82) {
+      if (distance(projectile.to, projectile.target.pos) <= projectile.target.radius + 92) return projectile.target;
+    }
     if (projectile.target?.targetable && distance({ x: projectile.x, y: projectile.y }, projectile.target.pos) <= projectile.target.radius + 16) {
       return projectile.target;
     }
@@ -155,10 +164,19 @@ export class TowerSystem {
 
   private applyBulletHit(tower: Tower, target: Enemy, enemies: Enemy[], effects: Effect[], damageTexts: DamageText[]): void {
     if (tower.kind === 'frost') {
-      this.damageEnemy(target, tower.damage, effects, damageTexts);
+      const fannedFire = target.burnTimer > 0;
+      if (fannedFire) {
+        target.fanTheFlames(1.65, 1.8);
+        effects.push(makeEffect('heatWave', target.pos, { color: '#fb923c', size: target.radius + 44, maxLife: 0.32, variant: 'bomb' }));
+      }
+      this.damageEnemy(target, tower.damage * (fannedFire ? 1.75 : 1), effects, damageTexts, fannedFire);
       enemies.forEach((enemy) => {
         if (enemy.targetable && distance(enemy.pos, target.pos) < 95) {
           enemy.applySlow(1.45);
+          if (enemy.burnTimer > 0) {
+            enemy.fanTheFlames(1.45, 1.55);
+            effects.push(makeEffect('heatWave', enemy.pos, { color: '#fb923c', size: enemy.radius + 28, maxLife: 0.26, variant: 'bomb' }));
+          }
           effects.push(makeEffect('frostRing', enemy.pos, { color: '#67e8f9', size: enemy.radius + 16, maxLife: 0.38, variant: 'frost' }));
         }
       });
@@ -166,7 +184,11 @@ export class TowerSystem {
       playBombExplosion(target.pos.x, target.pos.y, effects);
       effects.push(makeEffect('heatWave', target.pos, { color: '#fed7aa', size: 138, maxLife: 0.52, variant: 'bomb', shake: tower.level >= 3 }));
       enemies.forEach((enemy) => {
-        if (enemy.targetable && distance(enemy.pos, target.pos) < 126) this.damageEnemy(enemy, tower.damage, effects, damageTexts, tower.level >= 3);
+        if (enemy.targetable && distance(enemy.pos, target.pos) < 126) {
+          this.damageEnemy(enemy, tower.damage, effects, damageTexts, tower.level >= 3);
+          enemy.applyBurn(7 + tower.level * 2.5, 3.2 + tower.level * 0.45);
+          effects.push(makeEffect('spark', enemy.pos, { color: '#fb923c', size: enemy.radius + 14, maxLife: 0.28, variant: 'bomb' }));
+        }
       });
     } else if (tower.kind === 'tesla') {
       const chain = enemies

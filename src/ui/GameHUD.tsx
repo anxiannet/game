@@ -13,6 +13,10 @@ export default function GameHUD({ stats, onPause, onSpeed, onUpgrade, onSell }: 
   const showTowerActions = stats.selectedTower !== undefined && stats.phase === 'playing';
   const hpRatio = Math.max(0, Math.min(stats.hp / 10, 1));
   const hpStyle = { '--hp-width': `${hpRatio * 100}%` } as CSSProperties & Record<'--hp-width', string>;
+  const upgradeProgress = Math.max(0, Math.min(stats.selectedTowerUpgradeProgress ?? 0, 1));
+  const upgradeProgressStyle = { '--upgrade-progress': `${upgradeProgress * 100}%` } as CSSProperties & Record<'--upgrade-progress', string>;
+  const upgradeLabel = stats.selectedTowerIsMaxLevel ? '满级' : '升级';
+  const upgradeHint = stats.selectedTowerIsMaxLevel ? '已满级' : `金币 ${stats.coins}/${stats.selectedTowerUpgradeCost ?? 0}`;
   return (
     <>
       <div className={`hud-top ${stats.hp <= 3 ? 'danger' : ''}`}>
@@ -23,7 +27,7 @@ export default function GameHUD({ stats, onPause, onSpeed, onUpgrade, onSell }: 
               <path d="M12 21.2 3.9 13.6C-.4 9.6 2.3 2.8 8.1 2.8c1.8 0 3.4.8 4.4 2.2 1-1.4 2.6-2.2 4.4-2.2 5.8 0 8.5 6.8 4.2 10.8L12 21.2Z" />
             </svg>
           </span>
-          <strong>{stats.hp}/10</strong>
+          <strong><span className="hp-text">{stats.hp}/10</span></strong>
         </div>
       </div>
       <div className="side-controls">
@@ -38,12 +42,19 @@ export default function GameHUD({ stats, onPause, onSpeed, onUpgrade, onSell }: 
         <span className="hud-icon coin">$</span>
         <strong>{stats.coins}</strong>
       </div>
-      {stats.selectedSpot !== undefined && stats.phase === 'playing' && (
-        <div className="action-tip">选择炮塔，马上顶住</div>
+      {(stats.selectedSpot !== undefined || stats.selectedBuildKind !== undefined) && stats.phase === 'playing' && (
+        <div className="action-tip">{stats.selectedBuildKind !== undefined ? '点空位，马上部署' : '选择炮塔，马上顶住'}</div>
       )}
       {showTowerActions && (
         <div className="tower-actions">
-          {stats.selectedTowerCanUpgrade && <button className="metal-button green" onClick={onUpgrade}><span>⬆</span>升级</button>}
+          <div className="upgrade-action">
+            <button className="metal-button green" onClick={onUpgrade} disabled={!stats.selectedTowerCanUpgrade}>
+              <span>⬆</span>{upgradeLabel}
+            </button>
+            <div className={`upgrade-progress ${stats.selectedTowerIsMaxLevel ? 'full' : ''}`} style={upgradeProgressStyle}>
+              <span>{upgradeHint}</span>
+            </div>
+          </div>
           <button className="metal-button red" onClick={onSell}><span>$</span>出售</button>
         </div>
       )}
