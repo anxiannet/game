@@ -4,7 +4,7 @@ const towerOrder: TowerKind[] = ['machineGun', 'coffee', 'frost', 'bomb', 'tesla
 const labels: Record<TowerKind, string> = {
   machineGun: '胶带',
   coffee: '咖啡',
-  frost: '冰冻',
+  frost: '风扇',
   bomb: '炸弹',
   tesla: '电磁',
 };
@@ -12,7 +12,7 @@ const labels: Record<TowerKind, string> = {
 const icons: Record<TowerKind, string> = {
   machineGun: '⌖',
   coffee: '☕',
-  frost: '❄',
+  frost: '◉',
   bomb: '●',
   tesla: '⚡',
 };

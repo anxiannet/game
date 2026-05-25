@@ -5,7 +5,7 @@ export const assetManifest = {
   towers: {
     machineGun: '/assets/towers/machine-gun-sheet.png',
     coffee: '/assets/towers/coffee-tower-sheet.png',
-    frost: '/assets/towers/frost-tower.png',
+    frost: '/assets/towers/fan-frost-tower-sheet.png',
     bomb: '/assets/towers/bomb-tower.png',
     tesla: '/assets/towers/tesla-tower.png',
     base: '/assets/towers/tower_base.png',

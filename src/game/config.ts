@@ -94,7 +94,7 @@ export const buildSpots: Vec2[] = [
 export const towerConfigs = {
   machineGun: { name: '胶带机枪塔', price: 100, range: 245, damage: 14, fireRate: 0.14, color: '#f59e0b' },
   coffee: { name: '咖啡塔', price: 200, range: 235, damage: 16, fireRate: 0.26, color: '#f6b84a' },
-  frost: { name: '冰冻塔', price: 120, range: 235, damage: 8, fireRate: 0.75, color: '#67e8f9' },
+  frost: { name: '电风扇减速塔', price: 120, range: 235, damage: 8, fireRate: 0.75, color: '#38d5ff' },
   bomb: { name: '炸弹塔', price: 150, range: 260, damage: 40, fireRate: 1.25, color: '#fb923c' },
   tesla: { name: '电磁塔', price: 180, range: 270, damage: 22, fireRate: 0.72, color: '#a78bfa' },
 } satisfies Record<TowerKind, {

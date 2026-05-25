@@ -38,6 +38,8 @@ export class Renderer {
   private towerPartReady: Partial<Record<TowerPartKey, boolean>> = {};
   private coffeeTowerImage = new Image();
   private coffeeTowerReady = false;
+  private fanFrostTowerImage = new Image();
+  private fanFrostTowerFrames?: { idle: HTMLCanvasElement[]; attack: HTMLCanvasElement[] };
   private yellowMonsterRunFrames?: HTMLCanvasElement[];
   private yellowMonsterHitFrames?: HTMLCanvasElement[];
   private yellowMonsterDeathFrames?: HTMLCanvasElement[];
@@ -57,6 +59,10 @@ export class Renderer {
       this.coffeeTowerReady = true;
     };
     this.coffeeTowerImage.src = assetManifest.towers.coffee;
+    this.fanFrostTowerImage.onload = () => {
+      this.buildFanFrostTowerFrames();
+    };
+    this.fanFrostTowerImage.src = assetManifest.towers.frost;
     this.loadEnemyImages();
     this.loadTowerPartImages();
     this.resize();
@@ -174,6 +180,11 @@ export class Renderer {
   }
 
   private drawTower(tower: Tower, time: number): void {
+    if (tower.kind === 'frost' && this.fanFrostTowerFrames) {
+      this.drawFanFrostTower(tower, time);
+      return;
+    }
+
     const { ctx } = this;
     const cfg = towerConfigs[tower.kind];
     const idleOffsetY = Math.sin(time * 0.004 + tower.idleSeed) * 2;
@@ -189,6 +200,7 @@ export class Renderer {
     ctx.save();
     ctx.translate(baseX, baseY);
     ctx.scale(idleScale, idleScale);
+    if (tower.kind === 'machineGun') this.drawTowerReadabilityShadow(tower.state === 'attack' ? 0.82 : 0.72);
     this.drawTowerBase(tower);
     ctx.restore();
 
@@ -227,15 +239,15 @@ export class Renderer {
     const ready = this.isTowerPartReady(tower, 'base');
 
     ctx.shadowColor = cfg.color;
-    ctx.shadowBlur = tower.state === 'attack' ? 20 : 12;
+      ctx.shadowBlur = tower.kind === 'machineGun' ? 4 : tower.state === 'attack' ? 20 : 12;
     if (ready && image) {
       if (tower.kind === 'machineGun') {
-        ctx.drawImage(image, -80, -88, 160, 150);
+        this.drawImageWithOutline(image, -100, -96, 200, 162, 8, 0.78);
       } else {
         ctx.drawImage(image, -64, -58, 128, 116);
       }
       ctx.globalCompositeOperation = 'screen';
-      ctx.globalAlpha = tower.kind === 'machineGun' ? 0.16 : 0.28;
+      ctx.globalAlpha = tower.kind === 'machineGun' ? 0.08 : 0.28;
       ctx.fillStyle = cfg.color;
       ctx.beginPath();
       ctx.arc(0, -8, 23, 0, Math.PI * 2);
@@ -267,16 +279,16 @@ export class Renderer {
     const scaleY = tower.kind === 'bomb' ? 1.18 : tower.kind === 'tesla' ? 0.9 : 1;
 
     ctx.shadowColor = cfg.color;
-    ctx.shadowBlur = tower.state === 'attack' ? 24 : 12;
+    ctx.shadowBlur = tower.kind === 'machineGun' ? 5 : tower.state === 'attack' ? 24 : 12;
     if (ready && image) {
       ctx.scale(tower.kind === 'frost' ? 0.92 : 1, scaleY);
       if (tower.kind === 'machineGun') {
-        ctx.drawImage(image, -56, -42, 172, 84);
+        this.drawImageWithOutline(image, -68, -49, 208, 100, 7, 0.82);
       } else {
         ctx.drawImage(image, -30, -25, 100, 50);
       }
       ctx.globalCompositeOperation = 'screen';
-      ctx.globalAlpha = tower.kind === 'machineGun' ? 0.18 : 0.32;
+      ctx.globalAlpha = tower.kind === 'machineGun' ? 0.1 : 0.32;
       ctx.fillStyle = cfg.color;
       ctx.fillRect(16, -7, 42, 14);
       ctx.globalAlpha = 1;
@@ -336,6 +348,39 @@ export class Renderer {
     ctx.restore();
   }
 
+  private drawTowerReadabilityShadow(alpha: number): void {
+    const { ctx } = this;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#05070a';
+    ctx.beginPath();
+    ctx.ellipse(0, 28, 112, 42, -0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  private drawImageWithOutline(image: HTMLImageElement, x: number, y: number, width: number, height: number, outline = 6, alpha = 0.72): void {
+    const { ctx } = this;
+    const offsets = [
+      [-outline, 0],
+      [outline, 0],
+      [0, -outline],
+      [0, outline],
+      [-outline * 0.7, -outline * 0.7],
+      [outline * 0.7, -outline * 0.7],
+      [-outline * 0.7, outline * 0.7],
+      [outline * 0.7, outline * 0.7],
+    ];
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.filter = 'brightness(0) saturate(0)';
+    offsets.forEach(([dx, dy]) => ctx.drawImage(image, x + dx, y + dy, width, height));
+    ctx.restore();
+
+    ctx.drawImage(image, x, y, width, height);
+  }
+
   private drawCoffeeTower(tower: Tower): void {
     const { ctx } = this;
     if (!this.coffeeTowerReady) return;
@@ -370,6 +415,81 @@ export class Renderer {
     ctx.restore();
   }
 
+  private drawFanFrostTower(tower: Tower, time: number): void {
+    const { ctx } = this;
+    const cfg = towerConfigs[tower.kind];
+    const frames = this.fanFrostTowerFrames;
+    if (!frames) return;
+
+    const attacking = tower.state === 'attack' || tower.recoilTime > 0;
+    const frameSet = attacking ? frames.attack : frames.idle;
+    const fps = attacking ? 14 : 8;
+    const frame = frameSet[Math.floor((tower.animTime + tower.idleSeed) * fps) % frameSet.length];
+    const idleOffsetY = Math.sin(time * 0.004 + tower.idleSeed) * 2;
+    const pulse = attacking ? 1.04 + Math.sin(tower.animTime * 28) * 0.025 : 1 + Math.sin(time * 0.003 + tower.idleSeed) * 0.02;
+    const drawHeight = 168;
+    const drawWidth = drawHeight * (frame.width / frame.height);
+
+    if (attacking) this.drawFanWindBlast(tower, time);
+
+    ctx.save();
+    ctx.translate(tower.x, tower.y + idleOffsetY);
+    ctx.scale(pulse, pulse);
+    ctx.shadowColor = cfg.color;
+    ctx.shadowBlur = attacking ? 24 : 12;
+    ctx.drawImage(frame, -drawWidth / 2, -drawHeight + 58, drawWidth, drawHeight);
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = attacking ? 0.34 : 0.2;
+    ctx.fillStyle = cfg.color;
+    ctx.beginPath();
+    ctx.arc(0, -44, 34 + Math.sin(time * 0.02) * 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = '700 24px system-ui';
+    ctx.textAlign = 'center';
+    ctx.strokeStyle = '#050505';
+    ctx.lineWidth = 5;
+    ctx.strokeText(String(tower.level), 0, 62);
+    ctx.fillText(String(tower.level), 0, 62);
+    if (tower.level >= 4) {
+      ctx.strokeStyle = cfg.color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 2, 54 + Math.sin(time * 0.006 + tower.idleSeed) * 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  private drawFanWindBlast(tower: Tower, time: number): void {
+    const { ctx } = this;
+    const originX = tower.x + Math.cos(tower.angle) * 30;
+    const originY = tower.y - 42 + Math.sin(tower.angle) * 30;
+
+    ctx.save();
+    ctx.translate(originX, originY);
+    ctx.rotate(tower.angle);
+    ctx.globalCompositeOperation = 'screen';
+    ctx.shadowColor = '#67e8f9';
+    ctx.shadowBlur = 18;
+    for (let i = 0; i < 4; i += 1) {
+      const phase = (time * 0.006 + i * 0.24) % 1;
+      const length = 52 + phase * 84;
+      const spread = 10 + phase * 28;
+      ctx.globalAlpha = (1 - phase) * 0.72;
+      ctx.strokeStyle = i % 2 === 0 ? '#9ff6ff' : '#38d5ff';
+      ctx.lineWidth = 8 - phase * 4;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(length * 0.35, -spread, length * 0.7, spread, length, Math.sin(phase * Math.PI * 2) * 12);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   private drawEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy, time: number): void {
     const image = this.enemyImages[enemy.kind];
     const ready = this.enemyReady[enemy.kind] && image;
@@ -394,7 +514,7 @@ export class Renderer {
     ctx.save();
     ctx.translate(enemy.pos.x + offsetX, enemy.pos.y - enemy.radius * 0.85 + offsetY);
     ctx.rotate(rotation);
-    ctx.scale(enemy.facingX < 0 ? -scale : scale, scale);
+    ctx.scale(enemy.facingX > 0 ? -scale : scale, scale);
     ctx.globalAlpha = alpha;
     ctx.shadowColor = enemy.rageFlashTimer > 0 || flashWhite ? '#fef2f2' : enemy.color;
     ctx.shadowBlur = enemy.kind === 'boss' ? 24 : flashWhite ? 18 : 8;
@@ -581,6 +701,25 @@ export class Renderer {
       image.src = assetManifest.towers[part];
       this.towerPartImages[part] = image;
     });
+  }
+
+  private buildFanFrostTowerFrames(): void {
+    const idleFrames: SpriteFrame[] = [
+      { x: 364, y: 36, w: 166, h: 206 },
+      { x: 540, y: 36, w: 172, h: 206 },
+      { x: 724, y: 36, w: 170, h: 206 },
+      { x: 892, y: 36, w: 158, h: 206 },
+    ];
+    const attackFrames: SpriteFrame[] = [
+      { x: 424, y: 272, w: 186, h: 228 },
+      { x: 612, y: 272, w: 184, h: 228 },
+      { x: 790, y: 272, w: 214, h: 228 },
+    ];
+
+    this.fanFrostTowerFrames = {
+      idle: idleFrames.map((frame) => this.makeTransparentFrame(this.fanFrostTowerImage, frame)),
+      attack: attackFrames.map((frame) => this.makeTransparentFrame(this.fanFrostTowerImage, frame)),
+    };
   }
 
   private getTowerPartKey(tower: Tower, part: 'base' | 'weapon' | 'muzzleFlash' | 'bullet' | 'hitEffect'): TowerPartKey {
