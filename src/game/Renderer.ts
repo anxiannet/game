@@ -26,7 +26,13 @@ type TowerPartKey =
   | 'machineGunTapeMuzzleFlash'
   | 'machineGunTapeBullet'
   | 'machineGunTapeHitEffect'
-  | 'machineGunTapeIcon';
+  | 'machineGunTapeIcon'
+  | 'fanSlowBase'
+  | 'fanSlowWeapon'
+  | 'fanSlowMuzzleFlash'
+  | 'fanSlowBullet'
+  | 'fanSlowHitEffect'
+  | 'fanSlowIcon';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -38,8 +44,6 @@ export class Renderer {
   private towerPartReady: Partial<Record<TowerPartKey, boolean>> = {};
   private coffeeTowerImage = new Image();
   private coffeeTowerReady = false;
-  private fanFrostTowerImage = new Image();
-  private fanFrostTowerFrames?: { idle: HTMLCanvasElement[]; attack: HTMLCanvasElement[] };
   private yellowMonsterRunFrames?: HTMLCanvasElement[];
   private yellowMonsterHitFrames?: HTMLCanvasElement[];
   private yellowMonsterDeathFrames?: HTMLCanvasElement[];
@@ -59,10 +63,6 @@ export class Renderer {
       this.coffeeTowerReady = true;
     };
     this.coffeeTowerImage.src = assetManifest.towers.coffee;
-    this.fanFrostTowerImage.onload = () => {
-      this.buildFanFrostTowerFrames();
-    };
-    this.fanFrostTowerImage.src = assetManifest.towers.frost;
     this.loadEnemyImages();
     this.loadTowerPartImages();
     this.resize();
@@ -180,15 +180,11 @@ export class Renderer {
   }
 
   private drawTower(tower: Tower, time: number): void {
-    if (tower.kind === 'frost' && this.fanFrostTowerFrames) {
-      this.drawFanFrostTower(tower, time);
-      return;
-    }
-
     const { ctx } = this;
     const cfg = towerConfigs[tower.kind];
     const idleOffsetY = Math.sin(time * 0.004 + tower.idleSeed) * 2;
     const idleScale = 1 + Math.sin(time * 0.003 + tower.idleSeed) * 0.025;
+    const levelScale = this.getTowerLevelScale(tower);
     const attackShake = tower.state === 'attack' ? tower.recoil * 2.4 : 0;
     const baseX = tower.x + (Math.random() - 0.5) * attackShake;
     const baseY = tower.y + idleOffsetY + (Math.random() - 0.5) * attackShake;
@@ -199,18 +195,19 @@ export class Renderer {
 
     ctx.save();
     ctx.translate(baseX, baseY);
-    ctx.scale(idleScale, idleScale);
-    if (tower.kind === 'machineGun') this.drawTowerReadabilityShadow(tower.state === 'attack' ? 0.82 : 0.72);
+    ctx.scale(idleScale * levelScale, idleScale * levelScale);
+    if (tower.kind === 'machineGun' || tower.kind === 'frost') this.drawTowerReadabilityShadow(tower.state === 'attack' ? 0.82 : 0.72);
     this.drawTowerBase(tower);
     ctx.restore();
 
     ctx.save();
     ctx.translate(weaponX, weaponY);
+    ctx.scale(levelScale, levelScale);
     ctx.rotate(tower.angle + jitter);
     this.drawTowerWeapon(tower);
     ctx.restore();
 
-    this.drawMuzzleFlash(tower, idleOffsetY);
+    this.drawMuzzleFlash(tower, idleOffsetY, levelScale);
 
     ctx.save();
     ctx.translate(tower.x, tower.y);
@@ -220,16 +217,20 @@ export class Renderer {
     ctx.textAlign = 'center';
     ctx.strokeStyle = '#050505';
     ctx.lineWidth = 5;
-    ctx.strokeText(String(tower.level), 0, 62);
-    ctx.fillText(String(tower.level), 0, 62);
+    ctx.strokeText(String(tower.level), 0, 62 * levelScale);
+    ctx.fillText(String(tower.level), 0, 62 * levelScale);
     if (tower.level >= 4) {
       ctx.strokeStyle = cfg.color;
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(0, 2, 54 + Math.sin(time * 0.006 + tower.idleSeed) * 3, 0, Math.PI * 2);
+      ctx.arc(0, 2, levelScale * (54 + Math.sin(time * 0.006 + tower.idleSeed) * 3), 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.restore();
+  }
+
+  private getTowerLevelScale(tower: Tower): number {
+    return 1 + (tower.level - 1) * 0.055;
   }
 
   private drawTowerBase(tower: Tower): void {
@@ -239,10 +240,12 @@ export class Renderer {
     const ready = this.isTowerPartReady(tower, 'base');
 
     ctx.shadowColor = cfg.color;
-      ctx.shadowBlur = tower.kind === 'machineGun' ? 4 : tower.state === 'attack' ? 20 : 12;
+    ctx.shadowBlur = tower.kind === 'machineGun' ? 4 : tower.state === 'attack' ? 20 : 12;
     if (ready && image) {
       if (tower.kind === 'machineGun') {
-        this.drawImageWithOutline(image, -100, -96, 200, 162, 8, 0.78);
+        this.drawImageWithOutline(image, -76, -72, 152, 124, 6, 0.72);
+      } else if (tower.kind === 'frost') {
+        this.drawImageWithOutline(image, -72, -58, 144, 116, 5, 0.7);
       } else {
         ctx.drawImage(image, -64, -58, 128, 116);
       }
@@ -281,9 +284,11 @@ export class Renderer {
     ctx.shadowColor = cfg.color;
     ctx.shadowBlur = tower.kind === 'machineGun' ? 5 : tower.state === 'attack' ? 24 : 12;
     if (ready && image) {
-      ctx.scale(tower.kind === 'frost' ? 0.92 : 1, scaleY);
+      ctx.scale(1, scaleY);
       if (tower.kind === 'machineGun') {
-        this.drawImageWithOutline(image, -68, -49, 208, 100, 7, 0.82);
+        this.drawImageWithOutline(image, -50, -37, 158, 76, 5, 0.76);
+      } else if (tower.kind === 'frost') {
+        this.drawImageWithOutline(image, -48, -66, 148, 132, 5, 0.74);
       } else {
         ctx.drawImage(image, -30, -25, 100, 50);
       }
@@ -307,13 +312,13 @@ export class Renderer {
     ctx.fillRect(36, -8, 30, 16);
   }
 
-  private drawMuzzleFlash(tower: Tower, idleOffsetY: number): void {
+  private drawMuzzleFlash(tower: Tower, idleOffsetY: number, towerScale: number): void {
     if (tower.recoilTime <= 0) return;
 
     const { ctx } = this;
     const image = this.getTowerPartImage(tower, 'muzzleFlash');
     const ready = this.isTowerPartReady(tower, 'muzzleFlash');
-    const weaponLength = 74;
+    const weaponLength = (tower.kind === 'machineGun' ? 56 : 74) * towerScale;
     const t = 1 - tower.recoilTime / 0.08;
     const scale = 1.2 - t * 0.8;
     const alpha = 1 - t;
@@ -324,11 +329,13 @@ export class Renderer {
     ctx.translate(muzzleX, muzzleY);
     ctx.rotate(tower.angle);
     ctx.globalAlpha = alpha;
-    ctx.scale(scale, scale);
+    ctx.scale(scale * towerScale, scale * towerScale);
     ctx.globalCompositeOperation = 'screen';
     if (ready && image) {
       if (tower.kind === 'machineGun') {
         ctx.drawImage(image, -18, -28, 66, 56);
+      } else if (tower.kind === 'frost') {
+        ctx.drawImage(image, -18, -38, 86, 76);
       } else {
         ctx.drawImage(image, -14, -24, 52, 48);
       }
@@ -412,81 +419,6 @@ export class Renderer {
     ctx.lineWidth = 5;
     ctx.strokeText(String(tower.level), 0, 62);
     ctx.fillText(String(tower.level), 0, 62);
-    ctx.restore();
-  }
-
-  private drawFanFrostTower(tower: Tower, time: number): void {
-    const { ctx } = this;
-    const cfg = towerConfigs[tower.kind];
-    const frames = this.fanFrostTowerFrames;
-    if (!frames) return;
-
-    const attacking = tower.state === 'attack' || tower.recoilTime > 0;
-    const frameSet = attacking ? frames.attack : frames.idle;
-    const fps = attacking ? 14 : 8;
-    const frame = frameSet[Math.floor((tower.animTime + tower.idleSeed) * fps) % frameSet.length];
-    const idleOffsetY = Math.sin(time * 0.004 + tower.idleSeed) * 2;
-    const pulse = attacking ? 1.04 + Math.sin(tower.animTime * 28) * 0.025 : 1 + Math.sin(time * 0.003 + tower.idleSeed) * 0.02;
-    const drawHeight = 168;
-    const drawWidth = drawHeight * (frame.width / frame.height);
-
-    if (attacking) this.drawFanWindBlast(tower, time);
-
-    ctx.save();
-    ctx.translate(tower.x, tower.y + idleOffsetY);
-    ctx.scale(pulse, pulse);
-    ctx.shadowColor = cfg.color;
-    ctx.shadowBlur = attacking ? 24 : 12;
-    ctx.drawImage(frame, -drawWidth / 2, -drawHeight + 58, drawWidth, drawHeight);
-    ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = attacking ? 0.34 : 0.2;
-    ctx.fillStyle = cfg.color;
-    ctx.beginPath();
-    ctx.arc(0, -44, 34 + Math.sin(time * 0.02) * 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = '700 24px system-ui';
-    ctx.textAlign = 'center';
-    ctx.strokeStyle = '#050505';
-    ctx.lineWidth = 5;
-    ctx.strokeText(String(tower.level), 0, 62);
-    ctx.fillText(String(tower.level), 0, 62);
-    if (tower.level >= 4) {
-      ctx.strokeStyle = cfg.color;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 2, 54 + Math.sin(time * 0.006 + tower.idleSeed) * 3, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  private drawFanWindBlast(tower: Tower, time: number): void {
-    const { ctx } = this;
-    const originX = tower.x + Math.cos(tower.angle) * 30;
-    const originY = tower.y - 42 + Math.sin(tower.angle) * 30;
-
-    ctx.save();
-    ctx.translate(originX, originY);
-    ctx.rotate(tower.angle);
-    ctx.globalCompositeOperation = 'screen';
-    ctx.shadowColor = '#67e8f9';
-    ctx.shadowBlur = 18;
-    for (let i = 0; i < 4; i += 1) {
-      const phase = (time * 0.006 + i * 0.24) % 1;
-      const length = 52 + phase * 84;
-      const spread = 10 + phase * 28;
-      ctx.globalAlpha = (1 - phase) * 0.72;
-      ctx.strokeStyle = i % 2 === 0 ? '#9ff6ff' : '#38d5ff';
-      ctx.lineWidth = 8 - phase * 4;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.bezierCurveTo(length * 0.35, -spread, length * 0.7, spread, length, Math.sin(phase * Math.PI * 2) * 12);
-      ctx.stroke();
-    }
     ctx.restore();
   }
 
@@ -693,6 +625,12 @@ export class Renderer {
       'machineGunTapeBullet',
       'machineGunTapeHitEffect',
       'machineGunTapeIcon',
+      'fanSlowBase',
+      'fanSlowWeapon',
+      'fanSlowMuzzleFlash',
+      'fanSlowBullet',
+      'fanSlowHitEffect',
+      'fanSlowIcon',
     ] as TowerPartKey[]).forEach((part) => {
       const image = new Image();
       image.onload = () => {
@@ -703,32 +641,22 @@ export class Renderer {
     });
   }
 
-  private buildFanFrostTowerFrames(): void {
-    const idleFrames: SpriteFrame[] = [
-      { x: 364, y: 36, w: 166, h: 206 },
-      { x: 540, y: 36, w: 172, h: 206 },
-      { x: 724, y: 36, w: 170, h: 206 },
-      { x: 892, y: 36, w: 158, h: 206 },
-    ];
-    const attackFrames: SpriteFrame[] = [
-      { x: 424, y: 272, w: 186, h: 228 },
-      { x: 612, y: 272, w: 184, h: 228 },
-      { x: 790, y: 272, w: 214, h: 228 },
-    ];
-
-    this.fanFrostTowerFrames = {
-      idle: idleFrames.map((frame) => this.makeTransparentFrame(this.fanFrostTowerImage, frame)),
-      attack: attackFrames.map((frame) => this.makeTransparentFrame(this.fanFrostTowerImage, frame)),
-    };
-  }
-
   private getTowerPartKey(tower: Tower, part: 'base' | 'weapon' | 'muzzleFlash' | 'bullet' | 'hitEffect'): TowerPartKey {
-    if (tower.kind !== 'machineGun') return part;
-    if (part === 'base') return 'machineGunTapeBase';
-    if (part === 'weapon') return 'machineGunTapeWeapon';
-    if (part === 'muzzleFlash') return 'machineGunTapeMuzzleFlash';
-    if (part === 'bullet') return 'machineGunTapeBullet';
-    return 'machineGunTapeHitEffect';
+    if (tower.kind === 'machineGun') {
+      if (part === 'base') return 'machineGunTapeBase';
+      if (part === 'weapon') return 'machineGunTapeWeapon';
+      if (part === 'muzzleFlash') return 'machineGunTapeMuzzleFlash';
+      if (part === 'bullet') return 'machineGunTapeBullet';
+      return 'machineGunTapeHitEffect';
+    }
+    if (tower.kind === 'frost') {
+      if (part === 'base') return 'fanSlowBase';
+      if (part === 'weapon') return 'fanSlowWeapon';
+      if (part === 'muzzleFlash') return 'fanSlowMuzzleFlash';
+      if (part === 'bullet') return 'fanSlowBullet';
+      return 'fanSlowHitEffect';
+    }
+    return part;
   }
 
   private getTowerPartImage(tower: Tower, part: 'base' | 'weapon' | 'muzzleFlash' | 'bullet' | 'hitEffect'): HTMLImageElement | undefined {
@@ -801,8 +729,16 @@ export class Renderer {
 
   private drawProjectile(projectile: Projectile): void {
     const { ctx } = this;
-    const image = projectile.kind === 'machineGun' ? this.towerPartImages.machineGunTapeBullet : this.towerPartImages.bullet;
-    const ready = projectile.kind === 'machineGun' ? this.towerPartReady.machineGunTapeBullet : this.towerPartReady.bullet;
+    const image = projectile.kind === 'machineGun'
+      ? this.towerPartImages.machineGunTapeBullet
+      : projectile.kind === 'frost'
+        ? this.towerPartImages.fanSlowBullet
+        : this.towerPartImages.bullet;
+    const ready = projectile.kind === 'machineGun'
+      ? this.towerPartReady.machineGunTapeBullet
+      : projectile.kind === 'frost'
+        ? this.towerPartReady.fanSlowBullet
+        : this.towerPartReady.bullet;
     const alpha = 1 - projectile.life / projectile.maxLife;
     ctx.save();
     ctx.globalAlpha = Math.max(0, alpha);
@@ -812,8 +748,8 @@ export class Renderer {
     ctx.translate(projectile.x, projectile.y);
     ctx.rotate(projectile.angle);
     if (ready && image) {
-      const width = projectile.kind === 'machineGun' ? 54 : projectile.kind === 'bomb' ? 46 : projectile.kind === 'tesla' ? 58 : 36;
-      const height = projectile.kind === 'machineGun' ? 22 : projectile.kind === 'bomb' ? 32 : 18;
+      const width = projectile.kind === 'machineGun' ? 54 : projectile.kind === 'frost' ? 72 : projectile.kind === 'bomb' ? 46 : projectile.kind === 'tesla' ? 58 : 36;
+      const height = projectile.kind === 'machineGun' ? 22 : projectile.kind === 'frost' ? 46 : projectile.kind === 'bomb' ? 32 : 18;
       ctx.drawImage(image, -width / 2, -height / 2, width, height);
       ctx.globalCompositeOperation = 'screen';
       ctx.globalAlpha = Math.max(0, alpha) * 0.55;
@@ -855,8 +791,16 @@ export class Renderer {
 
   private drawHitEffect(effect: HitEffect): void {
     const { ctx } = this;
-    const image = effect.kind === 'machineGun' ? this.towerPartImages.machineGunTapeHitEffect : this.towerPartImages.hitEffect;
-    const ready = effect.kind === 'machineGun' ? this.towerPartReady.machineGunTapeHitEffect : this.towerPartReady.hitEffect;
+    const image = effect.kind === 'machineGun'
+      ? this.towerPartImages.machineGunTapeHitEffect
+      : effect.kind === 'frost'
+        ? this.towerPartImages.fanSlowHitEffect
+        : this.towerPartImages.hitEffect;
+    const ready = effect.kind === 'machineGun'
+      ? this.towerPartReady.machineGunTapeHitEffect
+      : effect.kind === 'frost'
+        ? this.towerPartReady.fanSlowHitEffect
+        : this.towerPartReady.hitEffect;
     ctx.save();
     ctx.translate(effect.x, effect.y);
     ctx.globalAlpha = effect.alpha;
@@ -867,6 +811,8 @@ export class Renderer {
     if (ready && image) {
       if (effect.kind === 'machineGun') {
         ctx.drawImage(image, -36, -28, 72, 54);
+      } else if (effect.kind === 'frost') {
+        ctx.drawImage(image, -42, -42, 84, 84);
       } else {
         ctx.drawImage(image, -28, -28, 56, 56);
       }

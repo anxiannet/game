@@ -5,7 +5,7 @@ export const assetManifest = {
   towers: {
     machineGun: '/assets/towers/machine-gun-sheet.png',
     coffee: '/assets/towers/coffee-tower-sheet.png',
-    frost: '/assets/towers/fan-frost-tower-sheet.png',
+    frost: '/assets/towers/fan_slow_icon.png',
     bomb: '/assets/towers/bomb-tower.png',
     tesla: '/assets/towers/tesla-tower.png',
     base: '/assets/towers/tower_base.png',
@@ -19,6 +19,12 @@ export const assetManifest = {
     machineGunTapeBullet: '/assets/towers/machinegun_tape_bullet.png',
     machineGunTapeHitEffect: '/assets/towers/machinegun_tape_hit_effect.png',
     machineGunTapeIcon: '/assets/towers/machinegun_tape_icon.png',
+    fanSlowBase: '/assets/towers/fan_slow_base.png',
+    fanSlowWeapon: '/assets/towers/fan_slow_weapon.png',
+    fanSlowMuzzleFlash: '/assets/towers/fan_slow_muzzle_flash.png',
+    fanSlowBullet: '/assets/towers/fan_slow_bullet.png',
+    fanSlowHitEffect: '/assets/towers/fan_slow_hit_effect.png',
+    fanSlowIcon: '/assets/towers/fan_slow_icon.png',
   },
   enemies: {
     yellow: '/assets/enemies/xiaohuangguai.png',
