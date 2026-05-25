@@ -212,8 +212,30 @@ button {
 }
 
 .hp-meter strong {
+  position: relative;
+  overflow: hidden;
   color: #fff3df;
-  background: linear-gradient(180deg, #e83e1f, #9c160d);
+  background: linear-gradient(180deg, #2b2b2b, #111);
+}
+
+.hp-meter strong::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--hp-width, 100%);
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.24), transparent 22%),
+    linear-gradient(180deg, #ff4a24, #9c160d);
+  transition: width 0.18s ease-out;
+}
+
+.hp-meter strong::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 238, 205, 0.22);
+  pointer-events: none;
 }
 
 .coin-meter strong {
@@ -401,15 +423,15 @@ button {
 }
 
 .tower-icon {
-  width: 42px;
+  width: 50px;
   height: 42px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  border-radius: 8px;
   background:
-    radial-gradient(circle at 40% 28%, #fff8d8 0 16%, transparent 17%),
+    radial-gradient(circle at 40% 28%, rgba(255,248,216,0.4) 0 16%, transparent 17%),
     linear-gradient(180deg, #343434, #111);
-  border: 4px solid #0a0a0a;
+  border: 3px solid #0a0a0a;
   color: var(--tower-color);
   font-size: 24px;
   font-weight: 1000;
@@ -418,8 +440,8 @@ button {
 }
 
 .tower-icon img {
-  width: 48px;
-  height: 48px;
+  width: 54px;
+  height: 50px;
   object-fit: contain;
   pointer-events: none;
   filter: drop-shadow(0 2px 0 #050505);
@@ -476,11 +498,12 @@ button {
 .tower-actions {
   position: absolute;
   left: 50%;
-  bottom: 104px;
+  bottom: calc(max(8px, env(safe-area-inset-bottom)) + 106px);
   transform: translateX(-50%);
-  z-index: 4;
+  z-index: 6;
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  max-width: calc(100% - 16px);
 }
 
 .metal-button {
@@ -499,6 +522,17 @@ button {
   font-weight: 1000;
   text-shadow: 1px 1px 0 #050505, -1px -1px 0 #050505, 0 2px 0 #050505;
   overflow: hidden;
+}
+
+.tower-actions .metal-button {
+  min-width: 104px;
+  height: 54px;
+  padding: 0 14px 8px;
+  font-size: 20px;
+}
+
+.tower-actions .metal-button span {
+  font-size: 24px;
 }
 
 .metal-button span {
@@ -559,7 +593,7 @@ button {
 
 .result-panel {
   width: min(92%, 430px);
-  padding: 24px 20px 28px;
+  padding: 20px 16px 22px;
   background:
     linear-gradient(145deg, rgba(255,255,255,0.18), transparent 22%),
     linear-gradient(180deg, rgba(45, 45, 43, 0.98), rgba(10, 10, 10, 0.98));
@@ -576,17 +610,17 @@ button {
 }
 
 .result-panel h1 {
-  margin: 6px 0 16px;
+  margin: 5px 0 12px;
   color: #fff8e8;
-  font-size: 38px;
+  font-size: 34px;
   line-height: 1.08;
   text-shadow: 3px 3px 0 #050505, -2px -2px 0 #050505, 0 5px 0 #050505;
 }
 
 .result-panel h2 {
-  margin: 16px 0 20px;
+  margin: 12px 0 14px;
   color: #fff0c0;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.35;
   text-shadow: 2px 2px 0 #050505;
 }
@@ -619,6 +653,103 @@ button {
   color: #ffd34d;
   font-size: 20px;
   text-shadow: 2px 2px 0 #050505;
+}
+
+.layout-share-card {
+  margin-top: 10px;
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 2px solid #050505;
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.12), transparent 24%),
+    linear-gradient(180deg, rgba(35, 39, 42, 0.96), rgba(9, 9, 9, 0.96));
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.16);
+}
+
+.layout-share-card > strong {
+  color: #ffcf3a;
+  font-size: 16px;
+  line-height: 1;
+  text-shadow: 2px 2px 0 #050505;
+}
+
+.layout-map {
+  position: relative;
+  width: 100%;
+  height: 132px;
+  border: 2px solid #070707;
+  border-radius: 6px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255,255,255,0.04) 1px, transparent 1px),
+    radial-gradient(circle at 55% 38%, rgba(245, 158, 11, 0.18), transparent 22%),
+    linear-gradient(180deg, #24272b, #101114);
+  background-size: 42px 42px, 42px 42px, auto, auto;
+}
+
+.layout-spot {
+  position: absolute;
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border: 2px solid #050505;
+  border-radius: 50%;
+  background: #454545;
+  color: #ddd6c4;
+  font-size: 11px;
+  font-weight: 1000;
+  line-height: 1;
+  box-shadow: 0 2px 0 #050505;
+}
+
+.layout-spot.filled {
+  border-radius: 7px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.35), transparent 28%),
+    linear-gradient(180deg, #ffcc35, #d96f08 64%, #5c2705);
+  color: #fff9e8;
+  font-size: 14px;
+  text-shadow: 1px 1px 0 #050505, -1px -1px 0 #050505;
+  box-shadow: 0 2px 0 #050505, 0 0 12px rgba(245, 158, 11, 0.65);
+}
+
+.layout-share-card small {
+  color: #f8e8bd;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 900;
+}
+
+.result-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.result-actions .metal-button {
+  min-width: 0;
+  width: 100%;
+  height: 50px;
+  gap: 5px;
+  padding: 0 8px 8px;
+  font-size: 16px;
+}
+
+.result-actions .metal-button span {
+  font-size: 21px;
+}
+
+.share-status {
+  margin-top: 9px;
+  color: #d9f99d;
+  font-size: 13px;
+  font-weight: 1000;
+  text-shadow: 1px 1px 0 #050505;
 }
 
 .tool-shell {

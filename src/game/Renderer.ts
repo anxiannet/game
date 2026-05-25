@@ -4,7 +4,7 @@ import { HitEffect } from '../entities/HitEffect';
 import { Projectile } from '../entities/Projectile';
 import { Tower } from '../entities/Tower';
 import { assetManifest } from '../assets/assetManifest';
-import { buildSpots, DESIGN_HEIGHT, DESIGN_WIDTH, pathPoints, slackerMonsterSpriteAtlas, towerConfigs, yellowMonsterSpriteAtlas } from './config';
+import { buildSpots, DESIGN_HEIGHT, DESIGN_WIDTH, MAX_TOWER_LEVEL, pathPoints, slackerMonsterSpriteAtlas, towerConfigs, yellowMonsterSpriteAtlas } from './config';
 import type { EnemySpriteAtlas, SpriteFrame } from './config';
 import { drawDamageTexts, drawParticles } from './effects/proceduralEffects';
 import type { GameSnapshot } from './Game';
@@ -27,12 +27,34 @@ type TowerPartKey =
   | 'machineGunTapeBullet'
   | 'machineGunTapeHitEffect'
   | 'machineGunTapeIcon'
+  | 'machineGunTapeLevel1'
+  | 'machineGunTapeLevel2'
+  | 'machineGunTapeLevel3'
+  | 'coffeeTowerSheet'
+  | 'coffeeTowerBase'
+  | 'coffeeTowerWeapon'
+  | 'coffeeTowerMuzzleFlash'
+  | 'coffeeTowerBullet'
+  | 'coffeeTowerHitEffect'
+  | 'coffeeTowerIcon'
+  | 'coffeeTowerLevel1'
+  | 'coffeeTowerLevel2'
+  | 'coffeeTowerLevel3'
   | 'fanSlowBase'
   | 'fanSlowWeapon'
   | 'fanSlowMuzzleFlash'
   | 'fanSlowBullet'
   | 'fanSlowHitEffect'
-  | 'fanSlowIcon';
+  | 'fanSlowIcon'
+  | 'fanSlowLevel1'
+  | 'fanSlowLevel2'
+  | 'fanSlowLevel3'
+  | 'microwaveTowerLevel1'
+  | 'microwaveTowerLevel2'
+  | 'microwaveTowerLevel3'
+  | 'wifiTowerLevel1'
+  | 'wifiTowerLevel2'
+  | 'wifiTowerLevel3';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -44,8 +66,6 @@ export class Renderer {
   private towerPartReady: Partial<Record<TowerPartKey, boolean>> = {};
   private specialTowerImages: Partial<Record<'bomb' | 'tesla', HTMLImageElement>> = {};
   private specialTowerReady: Partial<Record<'bomb' | 'tesla', boolean>> = {};
-  private coffeeTowerImage = new Image();
-  private coffeeTowerReady = false;
   private yellowMonsterRunFrames?: HTMLCanvasElement[];
   private yellowMonsterHitFrames?: HTMLCanvasElement[];
   private yellowMonsterDeathFrames?: HTMLCanvasElement[];
@@ -61,10 +81,6 @@ export class Renderer {
       this.mapReady = true;
     };
     this.mapImage.src = assetManifest.maps.industrial;
-    this.coffeeTowerImage.onload = () => {
-      this.coffeeTowerReady = true;
-    };
-    this.coffeeTowerImage.src = assetManifest.towers.coffee;
     this.loadEnemyImages();
     this.loadTowerPartImages();
     this.loadSpecialTowerImages();
@@ -96,6 +112,11 @@ export class Renderer {
     drawParticles(ctx, snapshot.particles);
     drawDamageTexts(ctx, snapshot.damageTexts);
     snapshot.effects.forEach((effect) => this.drawEffect(effect));
+    if (snapshot.phase === 'playing') {
+      snapshot.towers.forEach((tower) => {
+        if (tower.level < MAX_TOWER_LEVEL && snapshot.coins >= tower.upgradeCost) this.drawTowerUpgradeHint(tower, time);
+      });
+    }
     if (!this.mapReady) this.drawBase(snapshot.baseHp);
 
     ctx.restore();
@@ -183,6 +204,7 @@ export class Renderer {
   }
 
   private drawTower(tower: Tower, time: number): void {
+    if (this.drawTowerLevelImage(tower, time)) return;
     if (tower.kind === 'coffee') {
       this.drawCoffeeTower(tower);
       return;
@@ -231,7 +253,7 @@ export class Renderer {
     ctx.lineWidth = 5;
     ctx.strokeText(String(tower.level), 0, 62 * levelScale);
     ctx.fillText(String(tower.level), 0, 62 * levelScale);
-    if (tower.level >= 4) {
+    if (tower.level >= MAX_TOWER_LEVEL) {
       ctx.strokeStyle = cfg.color;
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -240,6 +262,52 @@ export class Renderer {
     }
     if (tower.coffeeBoostTimer > 0) this.drawCoffeeBoostBadge(tower, time);
     ctx.restore();
+  }
+
+  private drawTowerLevelImage(tower: Tower, time: number): boolean {
+    const image = this.towerPartImages[this.getTowerLevelImageKey(tower)];
+    if (!image) return false;
+
+    const { ctx } = this;
+    const cfg = towerConfigs[tower.kind];
+    const ready = !!this.towerPartReady[this.getTowerLevelImageKey(tower)];
+    if (!ready) return false;
+
+    const attacking = tower.state === 'attack' || tower.recoilTime > 0;
+    const levelScale = this.getTowerLevelScale(tower);
+    const idlePulse = Math.sin(time * 0.0038 + tower.idleSeed);
+    const idleBob = attacking ? 0 : idlePulse * 2.4;
+    const attackKick = attacking ? Math.sin(Math.max(0, Math.min(1, 1 - tower.recoilTime / 0.16)) * Math.PI) : 0;
+    const recoilX = attacking ? -Math.cos(tower.angle) * tower.recoil * 7 : 0;
+    const recoilY = attacking ? -Math.sin(tower.angle) * tower.recoil * 7 : idleBob;
+    const scale = levelScale * (attacking ? 1 + attackKick * 0.045 : 1 + idlePulse * 0.018);
+    const drawSize = tower.kind === 'machineGun' || tower.kind === 'frost' ? 154 : 166;
+
+    ctx.save();
+    ctx.translate(tower.x + recoilX, tower.y + recoilY);
+    ctx.scale(scale, scale);
+    this.drawTowerReadabilityShadow(attacking ? 0.78 : 0.66);
+    ctx.shadowColor = cfg.color;
+    ctx.shadowBlur = attacking ? 24 : 10 + (idlePulse + 1) * 4;
+    this.drawImageWithOutline(image, -drawSize / 2, -drawSize + 58, drawSize, drawSize, 5, 0.72);
+
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = attacking ? 0.22 + attackKick * 0.32 : 0.08 + (idlePulse + 1) * 0.04;
+    ctx.fillStyle = cfg.color;
+    ctx.beginPath();
+    ctx.arc(Math.cos(tower.angle) * 26, -48 + Math.sin(tower.angle) * 16, attacking ? 34 + attackKick * 10 : 24 + idlePulse * 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+
+    this.drawMuzzleFlash(tower, idleBob, levelScale);
+
+    ctx.save();
+    ctx.translate(tower.x, tower.y);
+    if (tower.coffeeBoostTimer > 0) this.drawCoffeeBoostBadge(tower, time);
+    ctx.restore();
+    return true;
   }
 
   private drawCoffeeBoostBadge(tower: Tower, time: number): void {
@@ -258,6 +326,54 @@ export class Renderer {
     ctx.beginPath();
     ctx.arc(34, -44, 10, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+  }
+
+  private drawTowerUpgradeHint(tower: Tower, time: number): void {
+    const { ctx } = this;
+    const pulse = 0.5 + Math.sin(time * 0.009 + tower.idleSeed) * 0.5;
+    const y = -76 - pulse * 5;
+
+    ctx.save();
+    ctx.translate(tower.x + 48, tower.y + y);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.shadowColor = '#facc15';
+    ctx.shadowBlur = 14 + pulse * 10;
+
+    ctx.fillStyle = '#050505';
+    ctx.beginPath();
+    ctx.roundRect(-31, -28, 62, 50, 12);
+    ctx.fill();
+
+    ctx.fillStyle = '#facc15';
+    ctx.strokeStyle = '#050505';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.roundRect(-27, -31, 54, 46, 11);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#fff7c2';
+    ctx.beginPath();
+    ctx.moveTo(0, -23);
+    ctx.lineTo(18, -4);
+    ctx.lineTo(8, -4);
+    ctx.lineTo(8, 11);
+    ctx.lineTo(-8, 11);
+    ctx.lineTo(-8, -4);
+    ctx.lineTo(-18, -4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff8e8';
+    ctx.font = '900 14px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 4;
+    ctx.strokeText('可升', 0, 25);
+    ctx.fillText('可升', 0, 25);
     ctx.restore();
   }
 
@@ -301,7 +417,8 @@ export class Renderer {
   }
 
   private getTowerLevelScale(tower: Tower): number {
-    return 1 + (tower.level - 1) * 0.055;
+    if (tower.level >= MAX_TOWER_LEVEL) return 0.99;
+    return 0.94 + (tower.level - 1) * 0.045;
   }
 
   private drawTowerBase(tower: Tower): void {
@@ -451,37 +568,67 @@ export class Renderer {
     ];
 
     ctx.save();
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
     ctx.globalAlpha = alpha;
     ctx.filter = 'brightness(0) saturate(0)';
     offsets.forEach(([dx, dy]) => ctx.drawImage(image, x + dx, y + dy, width, height));
     ctx.restore();
 
+    ctx.save();
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
     ctx.drawImage(image, x, y, width, height);
+    ctx.restore();
   }
 
   private drawCoffeeTower(tower: Tower): void {
     const { ctx } = this;
-    if (!this.coffeeTowerReady) return;
+    const image = this.towerPartImages.coffeeTowerSheet;
+    if (!this.towerPartReady.coffeeTowerSheet || !image) return;
 
-    const frameWidth = this.coffeeTowerImage.naturalWidth / 4;
-    const frameHeight = this.coffeeTowerImage.naturalHeight / 2;
+    const frameWidth = image.naturalWidth / 4;
+    const frameHeight = image.naturalHeight / 2;
     const attacking = tower.recoilTime > 0;
     const attackProgress = attacking ? 1 - tower.recoilTime / 0.16 : 0;
-    const frame = attacking
-      ? 4 + Math.min(3, Math.floor(Math.max(0, attackProgress) * 4))
-      : Math.floor(tower.animTime * 6) % 4;
+    const frame = attacking ? 4 : 0;
     const sx = (frame % 4) * frameWidth;
     const sy = Math.floor(frame / 4) * frameHeight;
     const drawHeight = 178;
     const drawWidth = drawHeight * (frameWidth / frameHeight);
-    const scale = attacking ? 1 + Math.sin(attackProgress * Math.PI) * 0.035 : 1;
+    const idlePulse = Math.sin(tower.animTime * 3.2 + tower.idleSeed);
+    const idleBob = attacking ? 0 : idlePulse * 2.4;
+    const attackKick = Math.sin(attackProgress * Math.PI);
+    const scale = attacking ? 1 + attackKick * 0.045 : 1 + idlePulse * 0.018;
+    const recoilX = attacking ? -Math.cos(tower.angle) * tower.recoil * 5 : 0;
+    const recoilY = attacking ? -Math.sin(tower.angle) * tower.recoil * 5 : idleBob;
+    const glow = attacking ? 20 : 10 + (idlePulse + 1) * 4;
 
     ctx.save();
-    ctx.translate(tower.pos.x, tower.pos.y);
+    ctx.translate(tower.pos.x + recoilX, tower.pos.y + recoilY);
     ctx.scale(scale, scale);
     ctx.shadowColor = '#f6b84a';
-    ctx.shadowBlur = attacking ? 20 : 10;
-    ctx.drawImage(this.coffeeTowerImage, sx, sy, frameWidth, frameHeight, -drawWidth / 2, -drawHeight + 62, drawWidth, drawHeight);
+    ctx.shadowBlur = glow;
+    ctx.drawImage(image, sx, sy, frameWidth, frameHeight, -drawWidth / 2, -drawHeight + 62, drawWidth, drawHeight);
+    if (attacking) {
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = 0.28 + attackKick * 0.32;
+      ctx.fillStyle = '#fff3b0';
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(tower.angle) * 34, -48 + Math.sin(tower.angle) * 18, 34 + attackKick * 12, 18 + attackKick * 8, tower.angle, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    } else {
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = 0.12 + (idlePulse + 1) * 0.04;
+      ctx.fillStyle = '#f6b84a';
+      ctx.beginPath();
+      ctx.arc(0, -52, 34 + idlePulse * 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#f8fafc';
     ctx.font = '700 24px system-ui';
@@ -757,12 +904,34 @@ export class Renderer {
       'machineGunTapeBullet',
       'machineGunTapeHitEffect',
       'machineGunTapeIcon',
+      'machineGunTapeLevel1',
+      'machineGunTapeLevel2',
+      'machineGunTapeLevel3',
+      'coffeeTowerSheet',
+      'coffeeTowerBase',
+      'coffeeTowerWeapon',
+      'coffeeTowerMuzzleFlash',
+      'coffeeTowerBullet',
+      'coffeeTowerHitEffect',
+      'coffeeTowerIcon',
+      'coffeeTowerLevel1',
+      'coffeeTowerLevel2',
+      'coffeeTowerLevel3',
       'fanSlowBase',
       'fanSlowWeapon',
       'fanSlowMuzzleFlash',
       'fanSlowBullet',
       'fanSlowHitEffect',
       'fanSlowIcon',
+      'fanSlowLevel1',
+      'fanSlowLevel2',
+      'fanSlowLevel3',
+      'microwaveTowerLevel1',
+      'microwaveTowerLevel2',
+      'microwaveTowerLevel3',
+      'wifiTowerLevel1',
+      'wifiTowerLevel2',
+      'wifiTowerLevel3',
     ] as TowerPartKey[]).forEach((part) => {
       const image = new Image();
       image.onload = () => {
@@ -792,6 +961,13 @@ export class Renderer {
       if (part === 'bullet') return 'machineGunTapeBullet';
       return 'machineGunTapeHitEffect';
     }
+    if (tower.kind === 'coffee') {
+      if (part === 'base') return 'coffeeTowerBase';
+      if (part === 'weapon') return 'coffeeTowerWeapon';
+      if (part === 'muzzleFlash') return 'coffeeTowerMuzzleFlash';
+      if (part === 'bullet') return 'coffeeTowerBullet';
+      return 'coffeeTowerHitEffect';
+    }
     if (tower.kind === 'frost') {
       if (part === 'base') return 'fanSlowBase';
       if (part === 'weapon') return 'fanSlowWeapon';
@@ -800,6 +976,15 @@ export class Renderer {
       return 'fanSlowHitEffect';
     }
     return part;
+  }
+
+  private getTowerLevelImageKey(tower: Tower): TowerPartKey {
+    const level = Math.max(1, Math.min(MAX_TOWER_LEVEL, tower.level));
+    if (tower.kind === 'machineGun') return `machineGunTapeLevel${level}` as TowerPartKey;
+    if (tower.kind === 'coffee') return `coffeeTowerLevel${level}` as TowerPartKey;
+    if (tower.kind === 'frost') return `fanSlowLevel${level}` as TowerPartKey;
+    if (tower.kind === 'bomb') return `microwaveTowerLevel${level}` as TowerPartKey;
+    return `wifiTowerLevel${level}` as TowerPartKey;
   }
 
   private getTowerPartImage(tower: Tower, part: 'base' | 'weapon' | 'muzzleFlash' | 'bullet' | 'hitEffect'): HTMLImageElement | undefined {
@@ -879,14 +1064,18 @@ export class Renderer {
     const { ctx } = this;
     const image = projectile.kind === 'machineGun'
       ? this.towerPartImages.machineGunTapeBullet
-      : projectile.kind === 'frost'
-        ? this.towerPartImages.fanSlowBullet
-        : this.towerPartImages.bullet;
+      : projectile.kind === 'coffee'
+        ? this.towerPartImages.coffeeTowerBullet
+        : projectile.kind === 'frost'
+          ? this.towerPartImages.fanSlowBullet
+          : this.towerPartImages.bullet;
     const ready = projectile.kind === 'machineGun'
       ? this.towerPartReady.machineGunTapeBullet
-      : projectile.kind === 'frost'
-        ? this.towerPartReady.fanSlowBullet
-        : this.towerPartReady.bullet;
+      : projectile.kind === 'coffee'
+        ? this.towerPartReady.coffeeTowerBullet
+        : projectile.kind === 'frost'
+          ? this.towerPartReady.fanSlowBullet
+          : this.towerPartReady.bullet;
     const alpha = 1 - projectile.life / projectile.maxLife;
     ctx.save();
     ctx.globalAlpha = Math.max(0, alpha);
@@ -993,14 +1182,18 @@ export class Renderer {
     const { ctx } = this;
     const image = effect.kind === 'machineGun'
       ? this.towerPartImages.machineGunTapeHitEffect
-      : effect.kind === 'frost'
-        ? this.towerPartImages.fanSlowHitEffect
-        : this.towerPartImages.hitEffect;
+      : effect.kind === 'coffee'
+        ? this.towerPartImages.coffeeTowerHitEffect
+        : effect.kind === 'frost'
+          ? this.towerPartImages.fanSlowHitEffect
+          : this.towerPartImages.hitEffect;
     const ready = effect.kind === 'machineGun'
       ? this.towerPartReady.machineGunTapeHitEffect
-      : effect.kind === 'frost'
-        ? this.towerPartReady.fanSlowHitEffect
-        : this.towerPartReady.hitEffect;
+      : effect.kind === 'coffee'
+        ? this.towerPartReady.coffeeTowerHitEffect
+        : effect.kind === 'frost'
+          ? this.towerPartReady.fanSlowHitEffect
+          : this.towerPartReady.hitEffect;
     ctx.save();
     ctx.translate(effect.x, effect.y);
     ctx.globalAlpha = effect.alpha;

@@ -77,7 +77,7 @@ export class TowerSystem {
     const boostTargets = towers
       .filter((candidate) => candidate.id !== tower.id && candidate.kind !== 'coffee' && inRange(tower.pos, candidate.pos, tower.range))
       .sort((a, b) => distance(a.pos, tower.pos) - distance(b.pos, tower.pos))
-      .slice(0, tower.level >= 4 ? 4 : 3);
+      .slice(0, tower.level >= 3 ? 4 : 3);
 
     if (boostTargets.length === 0) {
       tower.target = null;
@@ -136,7 +136,7 @@ export class TowerSystem {
       const chain = enemies
         .filter((enemy) => enemy.targetable && distance(enemy.pos, target.pos) < 230)
         .sort((a, b) => distance(a.pos, target.pos) - distance(b.pos, target.pos))
-        .slice(0, tower.level >= 4 ? 5 : 4);
+        .slice(0, tower.level >= 3 ? 5 : 4);
       bullet.chain = chain.map((enemy) => enemy.pos);
     }
     projectiles.push(bullet);
@@ -166,13 +166,13 @@ export class TowerSystem {
       playBombExplosion(target.pos.x, target.pos.y, effects);
       effects.push(makeEffect('heatWave', target.pos, { color: '#fed7aa', size: 138, maxLife: 0.52, variant: 'bomb', shake: tower.level >= 3 }));
       enemies.forEach((enemy) => {
-        if (enemy.targetable && distance(enemy.pos, target.pos) < 126) this.damageEnemy(enemy, tower.damage, effects, damageTexts, tower.level >= 4);
+        if (enemy.targetable && distance(enemy.pos, target.pos) < 126) this.damageEnemy(enemy, tower.damage, effects, damageTexts, tower.level >= 3);
       });
     } else if (tower.kind === 'tesla') {
       const chain = enemies
         .filter((enemy) => enemy.targetable && distance(enemy.pos, target.pos) < 230)
         .sort((a, b) => distance(a.pos, target.pos) - distance(b.pos, target.pos))
-        .slice(0, tower.level >= 4 ? 5 : 4);
+        .slice(0, tower.level >= 3 ? 5 : 4);
       chain.forEach((enemy, index) => {
         this.damageEnemy(enemy, tower.damage * (1 - index * 0.16), effects, damageTexts);
         effects.push(makeEffect('electricArc', enemy.pos, { color: '#93c5fd', size: enemy.radius + 28, maxLife: 0.18 + index * 0.03, variant: 'tesla' }));

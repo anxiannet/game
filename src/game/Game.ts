@@ -6,7 +6,7 @@ import { Tower } from '../entities/Tower';
 import { EconomySystem } from '../systems/EconomySystem';
 import { TowerSystem } from '../systems/TowerSystem';
 import { WaveSystem } from '../systems/WaveSystem';
-import { buildSpots, MAX_WAVES, titles, TowerKind, towerConfigs, Vec2 } from './config';
+import { buildSpots, MAX_TOWER_LEVEL, MAX_WAVES, titles, TowerKind, towerConfigs, Vec2 } from './config';
 import { effectsConfig } from './config/effectsConfig';
 import { ScreenShake, createExplosion, popText } from './effects/animation';
 import { makeEffect, releaseEffect } from './effects/effectPool';
@@ -25,6 +25,14 @@ import { Renderer } from './Renderer';
 
 export type GamePhase = 'playing' | 'paused' | 'won' | 'lost';
 
+export type TowerLayoutItem = {
+  kind: TowerKind;
+  level: number;
+  spot: number;
+  x: number;
+  y: number;
+};
+
 export type GameStats = {
   wave: number;
   hp: number;
@@ -32,6 +40,8 @@ export type GameStats = {
   kills: number;
   phase: GamePhase;
   speed: number;
+  towerLayout: TowerLayoutItem[];
+  selectedTowerCanUpgrade?: boolean;
   selectedSpot?: number;
   selectedTower?: number;
   title?: string;
@@ -132,7 +142,7 @@ export class Game {
 
   upgradeSelected(): void {
     const tower = this.towers.find((item) => item.id === this.selectedTower);
-    if (!tower || tower.level >= 5) return;
+    if (!tower || tower.level >= MAX_TOWER_LEVEL) return;
     if (!this.economy.spend(tower.upgradeCost)) {
       this.bumpShake(10);
       return;
@@ -276,7 +286,7 @@ export class Game {
       }
 
       if (enemy.reachedBase) {
-        this.baseHp -= enemy.damage;
+        this.baseHp = Math.max(0, this.baseHp - enemy.damage);
         this.effects.push(makeEffect('leak', enemy.pos, { color: '#ef4444', size: 90, maxLife: 0.35 }));
         this.screenShake.screenShake({ duration: 0.16, intensity: 24 });
         if (this.baseHp === 1 && !this.oneHpSlowMoUsed) {
@@ -393,6 +403,7 @@ export class Game {
   }
 
   private stats(): GameStats {
+    const selectedTower = this.towers.find((tower) => tower.id === this.selectedTower);
     return {
       wave: this.waves.wave,
       hp: Math.max(this.baseHp, 0),
@@ -400,8 +411,16 @@ export class Game {
       kills: this.kills,
       phase: this.phase,
       speed: this.speed,
+      towerLayout: this.towers.map((tower) => ({
+        kind: tower.kind,
+        level: tower.level,
+        spot: buildSpots.findIndex((spot) => Math.hypot(spot.x - tower.x, spot.y - tower.y) < 2) + 1,
+        x: tower.x,
+        y: tower.y,
+      })),
       selectedSpot: this.selectedSpot,
       selectedTower: this.selectedTower,
+      selectedTowerCanUpgrade: selectedTower ? selectedTower.level < MAX_TOWER_LEVEL : undefined,
       title: this.makeTitle(),
     };
   }

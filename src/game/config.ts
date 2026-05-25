@@ -1,6 +1,7 @@
 export const DESIGN_WIDTH = 1080;
 export const DESIGN_HEIGHT = 1920;
 export const MAX_WAVES = 20;
+export const MAX_TOWER_LEVEL = 3;
 
 export type Vec2 = { x: number; y: number };
 export type TowerKind = 'machineGun' | 'coffee' | 'frost' | 'bomb' | 'tesla';
@@ -92,11 +93,11 @@ export const buildSpots: Vec2[] = [
 ];
 
 export const towerConfigs = {
-  machineGun: { name: '胶带机枪塔', price: 100, range: 245, damage: 11, fireRate: 0.18, color: '#f59e0b' },
+  machineGun: { name: '胶带塔', price: 100, range: 245, damage: 11, fireRate: 0.18, color: '#f59e0b' },
   coffee: { name: '咖啡塔', price: 175, range: 255, damage: 0, fireRate: 1.5, color: '#f6b84a' },
-  frost: { name: '电风扇减速塔', price: 125, range: 235, damage: 9, fireRate: 0.9, color: '#38d5ff' },
-  bomb: { name: '微波炉爆炸塔', price: 160, range: 260, damage: 38, fireRate: 1.2, color: '#fb923c' },
-  tesla: { name: 'WiFi 电塔', price: 180, range: 285, damage: 18, fireRate: 0.75, color: '#60a5fa' },
+  frost: { name: '风扇塔', price: 125, range: 235, damage: 9, fireRate: 0.9, color: '#38d5ff' },
+  bomb: { name: '微波塔', price: 160, range: 260, damage: 38, fireRate: 1.2, color: '#fb923c' },
+  tesla: { name: '无线塔', price: 180, range: 285, damage: 18, fireRate: 0.75, color: '#60a5fa' },
 } satisfies Record<TowerKind, {
   name: string;
   price: number;

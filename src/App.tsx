@@ -12,6 +12,7 @@ const initialStats: GameStats = {
   kills: 0,
   phase: 'playing',
   speed: 1,
+  towerLayout: [],
 };
 
 export default function App() {

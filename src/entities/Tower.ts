@@ -1,5 +1,5 @@
 import { Enemy } from './Enemy';
-import { TowerKind, Vec2, machineGunSpriteConfig, towerConfigs } from '../game/config';
+import { MAX_TOWER_LEVEL, TowerKind, Vec2, machineGunSpriteConfig, towerConfigs } from '../game/config';
 
 export type TowerDirection = 'front_left' | 'front' | 'front_right';
 export type TowerAnimState = 'idle' | 'attack' | 'hit' | 'destroy';
@@ -60,6 +60,7 @@ export class Tower {
   }
 
   get upgradeCost(): number {
+    if (this.level >= MAX_TOWER_LEVEL) return Infinity;
     return Math.round(this.price * (0.72 + this.level * 0.42));
   }
 
