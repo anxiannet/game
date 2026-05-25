@@ -1,0 +1,15 @@
+export const effectsConfig = {
+  enemyHitShakeIntensity: 9,
+  bossHitShakeIntensity: 18,
+  enemyHitShakeDuration: 0.16,
+  enemyFlashDuration: 0.14,
+  enemyFlashAlpha: 0.52,
+  explosionDuration: 0.48,
+  screenShakeIntensity: 18,
+  floatingTextDuration: 0.5,
+  healthBarDelay: 0.38,
+  bossIntroDuration: 2.45,
+  bossRageStep: 0.2,
+  towerAttackDuration: 0.18,
+  muzzleFlashDuration: 0.12,
+} as const;

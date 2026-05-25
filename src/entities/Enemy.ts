@@ -1,4 +1,7 @@
-import { EnemyAnimState, EnemyKind, Vec2, enemyConfigs, pathPoints, yellowMonsterSpriteAtlas } from '../game/config';
+import { EnemyAnimState, EnemyKind, Vec2, enemyConfigs, pathPoints } from '../game/config';
+import { animateHealthBar, updateEntityFeedback, updateHealthBar, type HealthBarState } from '../game/effects/animation';
+
+export type EnemyState = 'move' | 'hit' | 'dying' | 'dead';
 
 export class Enemy {
   id: number;
@@ -13,7 +16,7 @@ export class Enemy {
   color: string;
   pathIndex = 0;
   reachedBase = false;
-  dead = false;
+  state: EnemyState = 'move';
   slowTimer = 0;
   burnTimer = 0;
   burnDps = 0;
@@ -24,6 +27,22 @@ export class Enemy {
   deathTimer = 0;
   rewardClaimed = false;
   facingX: 1 | -1 = 1;
+  visualOffset: Vec2 = { x: 0, y: 0 };
+  visualRotation = 0;
+  shakeTimer = 0;
+  shakeDuration = 0;
+  shakeIntensity = 0;
+  rotationIntensity = 0;
+  flashTimer = 0;
+  flashDuration = 0;
+  flashColor = '#ffffff';
+  flashAlpha = 0;
+  healthBar: HealthBarState;
+  rageFlashTimer = 0;
+  smokeSpawned = false;
+  readonly hitDuration = 0.12;
+  readonly deathDuration = 0.45;
+  private nextRageRatio = 0.8;
 
   constructor(id: number, kind: EnemyKind, wave: number, spawnOffset = 0) {
     const cfg = enemyConfigs[kind];
@@ -38,13 +57,26 @@ export class Enemy {
     this.damage = cfg.damage;
     this.radius = cfg.radius;
     this.color = cfg.color;
+    this.healthBar = { value: this.hp, delayedValue: this.hp, maxValue: this.maxHp, showTimer: 0, fade: 1 };
   }
 
   update(dt: number): void {
     if (this.reachedBase) return;
     this.animTime += dt;
+    updateEntityFeedback(this, dt, this.animTime * 6 + this.id * 1.73);
+    updateHealthBar(this.healthBar, dt);
+    if (this.rageFlashTimer > 0) this.rageFlashTimer -= dt;
 
-    if (this.dead) {
+    if (this.state === 'dying') {
+      this.deathTimer += dt;
+      if (this.deathTimer >= this.deathDuration) {
+        this.state = 'dead';
+        this.deathTimer = this.deathDuration;
+      }
+      return;
+    }
+
+    if (this.state === 'dead') {
       this.deathTimer += dt;
       return;
     }
@@ -60,10 +92,13 @@ export class Enemy {
     if (this.burnTimer > 0) {
       this.burnTimer -= dt;
       this.takeDamage(this.burnDps * dt);
-      if (this.dead) return;
+      if (this.hp <= 0) return;
     }
     if (this.slowTimer > 0) this.slowTimer -= dt;
-    if (this.hitTimer > 0) this.hitTimer -= dt;
+    if (this.hitTimer > 0) {
+      this.hitTimer = Math.max(0, this.hitTimer - dt);
+      if (this.hitTimer === 0 && this.state === 'hit') this.state = this.hp > 0 ? 'move' : 'dying';
+    }
 
     const target = pathPoints[this.pathIndex + 1];
     if (!target) {
@@ -92,14 +127,22 @@ export class Enemy {
   }
 
   takeDamage(amount: number): void {
-    if (this.dead) return;
+    if (this.state === 'dying' || this.state === 'dead') return;
     const wasReacting = this.hitTimer > 0;
+    const oldHp = this.hp;
     this.hp -= amount;
-    this.hitTimer = Math.max(this.hitTimer, 0.18);
+    this.hitTimer = this.hitDuration;
+    this.state = 'hit';
+    animateHealthBar(this.healthBar, oldHp, Math.max(this.hp, 0), this.maxHp);
     if (!wasReacting) this.animTime = 0;
+    if (this.kind === 'boss' && this.hp / this.maxHp <= this.nextRageRatio) {
+      this.rageFlashTimer = 0.32;
+      this.nextRageRatio -= 0.2;
+    }
     if (this.hp <= 0) {
-      this.dead = true;
       this.hp = 0;
+      this.state = 'dying';
+      this.hitTimer = 0;
       this.animTime = 0;
       this.deathTimer = 0;
     }
@@ -115,15 +158,21 @@ export class Enemy {
   }
 
   get animState(): EnemyAnimState {
-    if (this.dead) return 'death';
-    if (this.hitTimer > 0) return 'hit';
+    if (this.state === 'dying' || this.state === 'dead') return 'death';
+    if (this.state === 'hit') return 'hit';
     if (this.pauseTimer > 0) return 'idle';
     return 'run';
   }
 
+  get dead(): boolean {
+    return this.state === 'dead';
+  }
+
+  get targetable(): boolean {
+    return this.state !== 'dying' && this.state !== 'dead' && !this.reachedBase;
+  }
+
   get readyToRemove(): boolean {
-    if (!this.dead) return false;
-    const deathFrames = yellowMonsterSpriteAtlas.frames.death.length;
-    return this.kind !== 'yellow' || this.deathTimer >= deathFrames / yellowMonsterSpriteAtlas.fps.death;
+    return this.state === 'dead';
   }
 }

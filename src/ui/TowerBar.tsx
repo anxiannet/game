@@ -1,20 +1,20 @@
 import { TowerKind, towerConfigs } from '../game/config';
 
-const towerOrder: TowerKind[] = ['machineGun', 'frost', 'bomb', 'tesla', 'flame'];
+const towerOrder: TowerKind[] = ['machineGun', 'coffee', 'frost', 'bomb', 'tesla'];
 const labels: Record<TowerKind, string> = {
-  machineGun: '机枪',
+  machineGun: '胶带',
+  coffee: '咖啡',
   frost: '冰冻',
   bomb: '炸弹',
   tesla: '电磁',
-  flame: '火焰',
 };
 
 const icons: Record<TowerKind, string> = {
   machineGun: '⌖',
+  coffee: '☕',
   frost: '❄',
   bomb: '●',
   tesla: '⚡',
-  flame: '▲',
 };
 
 type Props = {

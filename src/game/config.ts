@@ -3,7 +3,7 @@ export const DESIGN_HEIGHT = 1920;
 export const MAX_WAVES = 50;
 
 export type Vec2 = { x: number; y: number };
-export type TowerKind = 'machineGun' | 'frost' | 'bomb' | 'tesla' | 'flame';
+export type TowerKind = 'machineGun' | 'coffee' | 'frost' | 'bomb' | 'tesla';
 export type EnemyKind = 'yellow' | 'slacker' | 'overtime' | 'requirement' | 'boss';
 
 export const pathPoints: Vec2[] = [
@@ -92,11 +92,11 @@ export const buildSpots: Vec2[] = [
 ];
 
 export const towerConfigs = {
-  machineGun: { name: '机枪塔', price: 100, range: 245, damage: 14, fireRate: 0.14, color: '#f59e0b' },
+  machineGun: { name: '胶带机枪塔', price: 100, range: 245, damage: 14, fireRate: 0.14, color: '#f59e0b' },
+  coffee: { name: '咖啡塔', price: 200, range: 235, damage: 16, fireRate: 0.26, color: '#f6b84a' },
   frost: { name: '冰冻塔', price: 120, range: 235, damage: 8, fireRate: 0.75, color: '#67e8f9' },
   bomb: { name: '炸弹塔', price: 150, range: 260, damage: 40, fireRate: 1.25, color: '#fb923c' },
   tesla: { name: '电磁塔', price: 180, range: 270, damage: 22, fireRate: 0.72, color: '#a78bfa' },
-  flame: { name: '火焰塔', price: 200, range: 210, damage: 8, fireRate: 0.16, color: '#ef4444' },
 } satisfies Record<TowerKind, {
   name: string;
   price: number;
@@ -124,13 +124,17 @@ export const enemyConfigs = {
 
 export type SpriteFrame = { x: number; y: number; w: number; h: number; anchorY?: number };
 export type EnemyAnimState = 'idle' | 'run' | 'hit' | 'death';
+export type EnemySpriteAtlas = {
+  fps: Record<EnemyAnimState, number>;
+  frames: Record<EnemyAnimState, SpriteFrame[]>;
+};
 
 export const yellowMonsterSpriteAtlas = {
   image: 'yellow',
   fps: {
     idle: 5,
     run: 10,
-    hit: 9,
+    hit: 14,
     death: 8,
   },
   frames: {
@@ -139,33 +143,77 @@ export const yellowMonsterSpriteAtlas = {
       { x: 229, y: 823, w: 164, h: 144 },
     ],
     run: [
-      { x: 429, y: 301, w: 150, h: 128 },
-      { x: 589, y: 297, w: 150, h: 128 },
-      { x: 762, y: 298, w: 150, h: 128 },
-      { x: 589, y: 297, w: 150, h: 128 },
+      { x: 0, y: 0, w: 260, h: 180 },
+      { x: 260, y: 0, w: 260, h: 180 },
+      { x: 520, y: 0, w: 260, h: 180 },
+      { x: 780, y: 0, w: 260, h: 180 },
+      { x: 1040, y: 0, w: 260, h: 180 },
+      { x: 1300, y: 0, w: 260, h: 180 },
+      { x: 1560, y: 0, w: 260, h: 180 },
     ],
     hit: [
-      { x: 35, y: 473, w: 166, h: 123 },
-      { x: 246, y: 471, w: 146, h: 125 },
-      { x: 432, y: 462, w: 146, h: 134 },
-      { x: 620, y: 462, w: 154, h: 137 },
-      { x: 801, y: 459, w: 145, h: 140 },
-      { x: 987, y: 472, w: 156, h: 126 },
-      { x: 1167, y: 457, w: 160, h: 143 },
-      { x: 1366, y: 472, w: 136, h: 126 },
+      { x: 0, y: 0, w: 260, h: 180 },
+      { x: 260, y: 0, w: 260, h: 180 },
+      { x: 520, y: 0, w: 260, h: 180 },
+      { x: 780, y: 0, w: 260, h: 180 },
+      { x: 1040, y: 0, w: 260, h: 180 },
+      { x: 1300, y: 0, w: 260, h: 180 },
+      { x: 1560, y: 0, w: 260, h: 180 },
     ],
     death: [
-      { x: 249, y: 636, w: 150, h: 150 },
-      { x: 417, y: 635, w: 150, h: 150 },
-      { x: 1122, y: 628, w: 150, h: 150 },
-      { x: 1352, y: 633, w: 150, h: 150 },
+      { x: 0, y: 0, w: 260, h: 180 },
+      { x: 260, y: 0, w: 260, h: 180 },
+      { x: 520, y: 0, w: 260, h: 180 },
+      { x: 780, y: 0, w: 260, h: 180 },
+      { x: 1040, y: 0, w: 260, h: 180 },
+      { x: 1300, y: 0, w: 260, h: 180 },
+      { x: 1560, y: 0, w: 260, h: 180 },
     ],
   },
-} satisfies {
-  image: 'yellow';
-  fps: Record<EnemyAnimState, number>;
-  frames: Record<EnemyAnimState, SpriteFrame[]>;
-};
+} satisfies EnemySpriteAtlas & { image: 'yellow' };
+
+export const slackerMonsterSpriteAtlas = {
+  image: 'slacker',
+  fps: {
+    idle: 4,
+    run: 7,
+    hit: 14,
+    death: 8,
+  },
+  frames: {
+    idle: [
+      { x: 0, y: 0, w: 260, h: 170 },
+      { x: 260, y: 0, w: 260, h: 170 },
+    ],
+    run: [
+      { x: 0, y: 0, w: 260, h: 170 },
+      { x: 260, y: 0, w: 260, h: 170 },
+      { x: 520, y: 0, w: 260, h: 170 },
+      { x: 780, y: 0, w: 260, h: 170 },
+      { x: 1040, y: 0, w: 260, h: 170 },
+      { x: 1300, y: 0, w: 260, h: 170 },
+      { x: 1560, y: 0, w: 260, h: 170 },
+    ],
+    hit: [
+      { x: 0, y: 0, w: 260, h: 170 },
+      { x: 260, y: 0, w: 260, h: 170 },
+      { x: 520, y: 0, w: 260, h: 170 },
+      { x: 780, y: 0, w: 260, h: 170 },
+      { x: 1040, y: 0, w: 260, h: 170 },
+      { x: 1300, y: 0, w: 260, h: 170 },
+      { x: 1560, y: 0, w: 260, h: 170 },
+    ],
+    death: [
+      { x: 0, y: 0, w: 260, h: 170 },
+      { x: 260, y: 0, w: 260, h: 170 },
+      { x: 520, y: 0, w: 260, h: 170 },
+      { x: 780, y: 0, w: 260, h: 170 },
+      { x: 1040, y: 0, w: 260, h: 170 },
+      { x: 1300, y: 0, w: 260, h: 170 },
+      { x: 1560, y: 0, w: 260, h: 170 },
+    ],
+  },
+} satisfies EnemySpriteAtlas & { image: 'slacker' };
 
 export const machineGunSpriteConfig = {
   frameWidth: 128,

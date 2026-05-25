@@ -1,11 +1,32 @@
 import { Enemy } from '../entities/Enemy';
 import { Effect } from '../entities/Effect';
+import { HitEffect } from '../entities/HitEffect';
 import { Projectile } from '../entities/Projectile';
 import { Tower } from '../entities/Tower';
 import { assetManifest } from '../assets/assetManifest';
-import { buildSpots, DESIGN_HEIGHT, DESIGN_WIDTH, pathPoints, towerConfigs, yellowMonsterSpriteAtlas } from './config';
-import type { EnemyAnimState, SpriteFrame } from './config';
+import { buildSpots, DESIGN_HEIGHT, DESIGN_WIDTH, pathPoints, slackerMonsterSpriteAtlas, towerConfigs, yellowMonsterSpriteAtlas } from './config';
+import type { EnemySpriteAtlas, SpriteFrame } from './config';
+import { drawDamageTexts, drawParticles } from './effects/proceduralEffects';
 import type { GameSnapshot } from './Game';
+
+type EnemySpriteFrames = {
+  run: HTMLCanvasElement[];
+  hit: HTMLCanvasElement[];
+  death: HTMLCanvasElement[];
+};
+
+type TowerPartKey =
+  | 'base'
+  | 'weapon'
+  | 'muzzleFlash'
+  | 'bullet'
+  | 'hitEffect'
+  | 'machineGunTapeBase'
+  | 'machineGunTapeWeapon'
+  | 'machineGunTapeMuzzleFlash'
+  | 'machineGunTapeBullet'
+  | 'machineGunTapeHitEffect'
+  | 'machineGunTapeIcon';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -13,7 +34,16 @@ export class Renderer {
   private mapReady = false;
   private enemyImages: Partial<Record<keyof typeof assetManifest.enemies, HTMLImageElement>> = {};
   private enemyReady: Partial<Record<keyof typeof assetManifest.enemies, boolean>> = {};
-  private yellowMonsterFrames?: Record<EnemyAnimState, HTMLCanvasElement[]>;
+  private towerPartImages: Partial<Record<TowerPartKey, HTMLImageElement>> = {};
+  private towerPartReady: Partial<Record<TowerPartKey, boolean>> = {};
+  private coffeeTowerImage = new Image();
+  private coffeeTowerReady = false;
+  private yellowMonsterRunFrames?: HTMLCanvasElement[];
+  private yellowMonsterHitFrames?: HTMLCanvasElement[];
+  private yellowMonsterDeathFrames?: HTMLCanvasElement[];
+  private slackerMonsterRunFrames?: HTMLCanvasElement[];
+  private slackerMonsterHitFrames?: HTMLCanvasElement[];
+  private slackerMonsterDeathFrames?: HTMLCanvasElement[];
 
   constructor(private canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -23,7 +53,12 @@ export class Renderer {
       this.mapReady = true;
     };
     this.mapImage.src = assetManifest.maps.industrial;
+    this.coffeeTowerImage.onload = () => {
+      this.coffeeTowerReady = true;
+    };
+    this.coffeeTowerImage.src = assetManifest.towers.coffee;
     this.loadEnemyImages();
+    this.loadTowerPartImages();
     this.resize();
   }
 
@@ -37,6 +72,7 @@ export class Renderer {
   render(snapshot: GameSnapshot): void {
     const { ctx } = this;
     const shake = snapshot.shake;
+    const time = performance.now();
     ctx.save();
     ctx.clearRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
     ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
@@ -44,15 +80,20 @@ export class Renderer {
     this.drawBackground();
     if (!this.mapReady) this.drawPath();
     this.drawBuildSpots(snapshot);
+    snapshot.towers.forEach((tower) => this.drawTower(tower, time));
+    snapshot.enemies.forEach((enemy) => this.drawEnemy(ctx, enemy, time));
     snapshot.projectiles.forEach((projectile) => this.drawProjectile(projectile));
-    snapshot.towers.forEach((tower) => this.drawTower(tower));
-    snapshot.enemies.forEach((enemy) => this.drawEnemy(enemy));
+    snapshot.hitEffects.forEach((effect) => this.drawHitEffect(effect));
+    drawParticles(ctx, snapshot.particles);
+    drawDamageTexts(ctx, snapshot.damageTexts);
     snapshot.effects.forEach((effect) => this.drawEffect(effect));
     if (!this.mapReady) this.drawBase(snapshot.baseHp);
 
     ctx.restore();
     if (snapshot.baseHp <= 3 && snapshot.phase === 'playing') this.drawAlert(snapshot.baseHp);
     if (snapshot.bossWarning > 0) this.drawBossWarning(snapshot.bossWarning);
+    if (snapshot.bossIntro > 0) this.drawBossIntro(snapshot.bossIntro, snapshot.bossIntroTotal);
+    this.drawBossHealth(snapshot.enemies);
   }
 
   private drawBackground(): void {
@@ -132,18 +173,83 @@ export class Renderer {
     });
   }
 
-  private drawTower(tower: Tower): void {
+  private drawTower(tower: Tower, time: number): void {
     const { ctx } = this;
     const cfg = towerConfigs[tower.kind];
+    const idleOffsetY = Math.sin(time * 0.004 + tower.idleSeed) * 2;
+    const idleScale = 1 + Math.sin(time * 0.003 + tower.idleSeed) * 0.025;
+    const attackShake = tower.state === 'attack' ? tower.recoil * 2.4 : 0;
+    const baseX = tower.x + (Math.random() - 0.5) * attackShake;
+    const baseY = tower.y + idleOffsetY + (Math.random() - 0.5) * attackShake;
+    const recoilDistance = tower.recoil * 8;
+    const weaponX = tower.x - Math.cos(tower.angle) * recoilDistance;
+    const weaponY = tower.y + idleOffsetY - Math.sin(tower.angle) * recoilDistance;
+    const jitter = tower.state === 'idle' ? Math.sin(time * 0.05 + tower.idleSeed) * 0.012 : Math.sin(time * 0.11 + tower.idleSeed) * 0.02;
+
     ctx.save();
-    ctx.translate(tower.pos.x, tower.pos.y);
+    ctx.translate(baseX, baseY);
+    ctx.scale(idleScale, idleScale);
+    this.drawTowerBase(tower);
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(weaponX, weaponY);
+    ctx.rotate(tower.angle + jitter);
+    this.drawTowerWeapon(tower);
+    ctx.restore();
+
+    this.drawMuzzleFlash(tower, idleOffsetY);
+
+    ctx.save();
+    ctx.translate(tower.x, tower.y);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = '700 24px system-ui';
+    ctx.textAlign = 'center';
+    ctx.strokeStyle = '#050505';
+    ctx.lineWidth = 5;
+    ctx.strokeText(String(tower.level), 0, 62);
+    ctx.fillText(String(tower.level), 0, 62);
+    if (tower.level >= 4) {
+      ctx.strokeStyle = cfg.color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 2, 54 + Math.sin(time * 0.006 + tower.idleSeed) * 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  private drawTowerBase(tower: Tower): void {
+    const { ctx } = this;
+    const cfg = towerConfigs[tower.kind];
+    const image = this.getTowerPartImage(tower, 'base');
+    const ready = this.isTowerPartReady(tower, 'base');
+
     ctx.shadowColor = cfg.color;
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur = tower.state === 'attack' ? 20 : 12;
+    if (ready && image) {
+      if (tower.kind === 'machineGun') {
+        ctx.drawImage(image, -80, -88, 160, 150);
+      } else {
+        ctx.drawImage(image, -64, -58, 128, 116);
+      }
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = tower.kind === 'machineGun' ? 0.16 : 0.28;
+      ctx.fillStyle = cfg.color;
+      ctx.beginPath();
+      ctx.arc(0, -8, 23, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      return;
+    }
+
     ctx.fillStyle = '#20242b';
     ctx.strokeStyle = '#05070a';
     ctx.lineWidth = 9;
     ctx.beginPath();
-    ctx.roundRect(-48, -38, 96, 76, 18);
+    ctx.roundRect(-50, -38, 100, 76, 16);
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = cfg.color;
@@ -151,53 +257,210 @@ export class Renderer {
     ctx.arc(0, -6, tower.kind === 'bomb' ? 30 : 24, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    ctx.rotate(tower.direction === 'front_left' ? -0.55 : tower.direction === 'front_right' ? 0.55 : 0);
+  }
+
+  private drawTowerWeapon(tower: Tower): void {
+    const { ctx } = this;
+    const cfg = towerConfigs[tower.kind];
+    const image = this.getTowerPartImage(tower, 'weapon');
+    const ready = this.isTowerPartReady(tower, 'weapon');
+    const scaleY = tower.kind === 'bomb' ? 1.18 : tower.kind === 'tesla' ? 0.9 : 1;
+
+    ctx.shadowColor = cfg.color;
+    ctx.shadowBlur = tower.state === 'attack' ? 24 : 12;
+    if (ready && image) {
+      ctx.scale(tower.kind === 'frost' ? 0.92 : 1, scaleY);
+      if (tower.kind === 'machineGun') {
+        ctx.drawImage(image, -56, -42, 172, 84);
+      } else {
+        ctx.drawImage(image, -30, -25, 100, 50);
+      }
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = tower.kind === 'machineGun' ? 0.18 : 0.32;
+      ctx.fillStyle = cfg.color;
+      ctx.fillRect(16, -7, 42, 14);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      return;
+    }
+
     ctx.fillStyle = '#111827';
-    ctx.fillRect(-11, -78, 22, 58);
+    ctx.strokeStyle = '#05070a';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.roundRect(-22, -16, 84, 32, 10);
+    ctx.fill();
+    ctx.stroke();
     ctx.fillStyle = cfg.color;
-    ctx.fillRect(-7, -86, 14, 18);
-    ctx.rotate(0);
+    ctx.fillRect(36, -8, 30, 16);
+  }
+
+  private drawMuzzleFlash(tower: Tower, idleOffsetY: number): void {
+    if (tower.recoilTime <= 0) return;
+
+    const { ctx } = this;
+    const image = this.getTowerPartImage(tower, 'muzzleFlash');
+    const ready = this.isTowerPartReady(tower, 'muzzleFlash');
+    const weaponLength = 74;
+    const t = 1 - tower.recoilTime / 0.08;
+    const scale = 1.2 - t * 0.8;
+    const alpha = 1 - t;
+    const muzzleX = tower.x + Math.cos(tower.angle) * weaponLength;
+    const muzzleY = tower.y + idleOffsetY + Math.sin(tower.angle) * weaponLength;
+
+    ctx.save();
+    ctx.translate(muzzleX, muzzleY);
+    ctx.rotate(tower.angle);
+    ctx.globalAlpha = alpha;
+    ctx.scale(scale, scale);
+    ctx.globalCompositeOperation = 'screen';
+    if (ready && image) {
+      if (tower.kind === 'machineGun') {
+        ctx.drawImage(image, -18, -28, 66, 56);
+      } else {
+        ctx.drawImage(image, -14, -24, 52, 48);
+      }
+    } else {
+      const gradient = ctx.createRadialGradient(8, 0, 0, 8, 0, 32);
+      gradient.addColorStop(0, 'rgba(255,255,255,1)');
+      gradient.addColorStop(0.36, 'rgba(253,230,138,0.95)');
+      gradient.addColorStop(1, 'rgba(249,115,22,0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(-4, -14);
+      ctx.lineTo(46, 0);
+      ctx.lineTo(-4, 14);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  private drawCoffeeTower(tower: Tower): void {
+    const { ctx } = this;
+    if (!this.coffeeTowerReady) return;
+
+    const frameWidth = this.coffeeTowerImage.naturalWidth / 4;
+    const frameHeight = this.coffeeTowerImage.naturalHeight / 2;
+    const attacking = tower.attackTimer > 0;
+    const attackProgress = attacking ? 1 - tower.attackTimer / 0.18 : 0;
+    const frame = attacking
+      ? 4 + Math.min(3, Math.floor(Math.max(0, attackProgress) * 4))
+      : Math.floor(tower.animTime * 6) % 4;
+    const sx = (frame % 4) * frameWidth;
+    const sy = Math.floor(frame / 4) * frameHeight;
+    const drawHeight = 178;
+    const drawWidth = drawHeight * (frameWidth / frameHeight);
+    const scale = attacking ? 1 + Math.sin(attackProgress * Math.PI) * 0.035 : 1;
+
+    ctx.save();
+    ctx.translate(tower.pos.x, tower.pos.y);
+    ctx.scale(scale, scale);
+    ctx.shadowColor = '#f6b84a';
+    ctx.shadowBlur = attacking ? 20 : 10;
+    ctx.drawImage(this.coffeeTowerImage, sx, sy, frameWidth, frameHeight, -drawWidth / 2, -drawHeight + 62, drawWidth, drawHeight);
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#f8fafc';
     ctx.font = '700 24px system-ui';
     ctx.textAlign = 'center';
-    ctx.fillText(String(tower.level), 0, 54);
+    ctx.strokeStyle = '#050505';
+    ctx.lineWidth = 5;
+    ctx.strokeText(String(tower.level), 0, 62);
+    ctx.fillText(String(tower.level), 0, 62);
     ctx.restore();
   }
 
-  private drawEnemy(enemy: Enemy): void {
-    if (enemy.kind === 'yellow' && this.enemyReady.yellow) {
-      this.drawYellowMonster(enemy);
-      return;
+  private drawEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy, time: number): void {
+    const image = this.enemyImages[enemy.kind];
+    const ready = this.enemyReady[enemy.kind] && image;
+    const clock = time / 1000;
+    const bob = enemy.state === 'move' || enemy.state === 'hit'
+      ? Math.sin(clock * 10 + enemy.id * 0.6) * (enemy.kind === 'boss' ? 2.2 : 4.2)
+      : 0;
+    const hitT = enemy.state === 'hit' ? 1 - enemy.hitTimer / enemy.hitDuration : 1;
+    const hitPulse = enemy.state === 'hit' ? Math.sin(Math.min(Math.max(hitT, 0), 1) * Math.PI) : 0;
+    const deathT = enemy.state === 'dying' || enemy.state === 'dead' ? Math.min(enemy.deathTimer / enemy.deathDuration, 1) : 0;
+    const deathEase = 1 - Math.pow(1 - deathT, 3);
+    const offsetX = enemy.visualOffset.x - enemy.facingX * hitPulse * 8;
+    const offsetY = enemy.visualOffset.y + bob - Math.sin(deathT * Math.PI) * 22 + deathEase * 12;
+    const scale = (enemy.state === 'hit' ? 1 + hitPulse * 0.05 : 1) * (deathT > 0 ? Math.max(0.18, 1 - deathEase * 0.72) : 1);
+    const alpha = deathT > 0 ? Math.max(0, 1 - deathEase) : 1;
+    const rotation = enemy.visualRotation - enemy.facingX * hitPulse * 0.1 - enemy.facingX * Math.sin(deathT * Math.PI) * 0.22;
+    const flashWhite = enemy.flashTimer > 0 && enemy.state !== 'dying' && enemy.state !== 'dead';
+    const kindScale = enemy.kind === 'boss' ? 3.9 : enemy.kind === 'slacker' ? 2.85 : 4.1;
+    const drawHeight = enemy.radius * kindScale;
+    const drawWidth = ready ? drawHeight * (image.naturalWidth / image.naturalHeight) : enemy.radius * 2.1;
+
+    ctx.save();
+    ctx.translate(enemy.pos.x + offsetX, enemy.pos.y - enemy.radius * 0.85 + offsetY);
+    ctx.rotate(rotation);
+    ctx.scale(enemy.facingX < 0 ? -scale : scale, scale);
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = enemy.rageFlashTimer > 0 || flashWhite ? '#fef2f2' : enemy.color;
+    ctx.shadowBlur = enemy.kind === 'boss' ? 24 : flashWhite ? 18 : 8;
+
+    if (ready) {
+      ctx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+      if (flashWhite) {
+        ctx.globalAlpha = Math.min(enemy.flashAlpha || 0.7, 0.82) * alpha;
+        ctx.globalCompositeOperation = 'screen';
+        ctx.filter = 'brightness(3) saturate(0)';
+        ctx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+        ctx.filter = 'none';
+      }
+    } else {
+      this.drawFallbackEnemyBody(enemy, flashWhite);
     }
-    this.drawFallbackEnemy(enemy);
+    ctx.restore();
+
+    this.drawEnemyStatus(enemy, -enemy.radius * 2.9);
   }
 
-  private drawYellowMonster(enemy: Enemy): void {
-    const cachedFrames = this.yellowMonsterFrames;
-    if (!cachedFrames) return;
+  private drawFallbackEnemyBody(enemy: Enemy, flashWhite: boolean): void {
     const { ctx } = this;
-    const state = enemy.dead ? 'death' : 'run';
-    const frames = cachedFrames[state];
-    const fps = yellowMonsterSpriteAtlas.fps[state];
+    ctx.fillStyle = flashWhite ? '#ffffff' : enemy.color;
+    ctx.strokeStyle = '#05070a';
+    ctx.lineWidth = enemy.kind === 'boss' ? 9 : 6;
+    ctx.beginPath();
+    ctx.roundRect(-enemy.radius, -enemy.radius * 0.82, enemy.radius * 2, enemy.radius * 1.64, enemy.radius * 0.55);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(-enemy.radius * 0.32, -enemy.radius * 0.1, 4, 0, Math.PI * 2);
+    ctx.arc(enemy.radius * 0.32, -enemy.radius * 0.1, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  private drawSpriteEnemy(enemy: Enemy, atlas: EnemySpriteAtlas, frameSets: Partial<EnemySpriteFrames>): void {
+    if (!frameSets.run || !frameSets.hit || !frameSets.death) return;
+    const { ctx } = this;
+    const state = enemy.animState;
+    const frames = state === 'death'
+      ? frameSets.death
+      : state === 'hit'
+        ? frameSets.hit
+        : frameSets.run;
+    const fps = atlas.fps[state];
     const frameIndex = state === 'death'
       ? Math.min(Math.floor(enemy.deathTimer * fps), frames.length - 1)
       : Math.floor(enemy.animTime * fps) % frames.length;
     const frame = frames[frameIndex];
     const facingLeft = enemy.facingX < 0;
-    const drawHeight = enemy.radius * (state === 'death' ? 3.25 : 3.95);
-    const drawWidth = enemy.radius * (state === 'death' ? 4.05 : 4.65);
+    const drawHeight = enemy.radius * (state === 'death' ? 3.25 : state === 'hit' ? 3.7 : 3.95);
+    const drawWidth = drawHeight * (frame.width / frame.height);
 
     ctx.save();
-    ctx.translate(enemy.pos.x, enemy.pos.y);
+    ctx.translate(enemy.pos.x + enemy.visualOffset.x, enemy.pos.y + enemy.visualOffset.y);
+    ctx.rotate(enemy.visualRotation);
     if (facingLeft) ctx.scale(-1, 1);
     ctx.shadowColor = enemy.hitTimer > 0 ? '#fef08a' : enemy.color;
     ctx.shadowBlur = enemy.hitTimer > 0 ? 12 : 4;
     ctx.drawImage(frame, -drawWidth / 2, -drawHeight + 9, drawWidth, drawHeight);
     if (enemy.hitTimer > 0 && !enemy.dead) {
       ctx.globalCompositeOperation = 'screen';
-      ctx.globalAlpha = Math.min(enemy.hitTimer * 2.5, 0.22);
-      ctx.fillStyle = '#fde68a';
+      ctx.globalAlpha = enemy.flashTimer > 0 ? enemy.flashAlpha : Math.min(enemy.hitTimer * 2.5, 0.22);
+      ctx.fillStyle = enemy.flashTimer > 0 ? enemy.flashColor : '#fde68a';
       ctx.beginPath();
       ctx.ellipse(0, -enemy.radius * 1.2, enemy.radius * 1.45, enemy.radius * 1.7, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -210,10 +473,14 @@ export class Renderer {
   private drawFallbackEnemy(enemy: Enemy): void {
     const { ctx } = this;
     ctx.save();
-    ctx.translate(enemy.pos.x, enemy.pos.y);
-    ctx.shadowColor = enemy.color;
+    ctx.translate(enemy.pos.x + enemy.visualOffset.x, enemy.pos.y + enemy.visualOffset.y);
+    ctx.rotate(enemy.visualRotation);
+    ctx.globalAlpha = enemy.dead ? Math.max(0, 1 - enemy.deathTimer * 4) : 1;
+    const deathScale = enemy.dead ? Math.max(0.2, 1 - enemy.deathTimer * 2.2) : 1;
+    ctx.scale(deathScale, deathScale);
+    ctx.shadowColor = enemy.rageFlashTimer > 0 ? '#fef2f2' : enemy.color;
     ctx.shadowBlur = enemy.kind === 'boss' ? 28 : 10;
-    ctx.fillStyle = enemy.color;
+    ctx.fillStyle = enemy.flashTimer > 0 ? enemy.flashColor : enemy.color;
     ctx.strokeStyle = '#05070a';
     ctx.lineWidth = enemy.kind === 'boss' ? 9 : 6;
     ctx.beginPath();
@@ -233,14 +500,14 @@ export class Renderer {
     const { ctx } = this;
     ctx.save();
     ctx.translate(enemy.pos.x, enemy.pos.y);
-    if (enemy.slowTimer > 0 && !enemy.dead) {
+    if (enemy.slowTimer > 0 && enemy.targetable) {
       ctx.strokeStyle = '#67e8f9';
       ctx.lineWidth = 5;
       ctx.beginPath();
-      ctx.arc(0, -enemy.radius * 0.35, enemy.radius + 9, 0, Math.PI * 2);
+      ctx.arc(0, enemy.radius * 0.34, enemy.radius + 9 + Math.sin(enemy.animTime * 18) * 2, 0, Math.PI * 2);
       ctx.stroke();
     }
-    if (enemy.burnTimer > 0 && !enemy.dead) {
+    if (enemy.burnTimer > 0 && enemy.targetable) {
       ctx.fillStyle = 'rgba(239,68,68,0.74)';
       ctx.shadowColor = '#ef4444';
       ctx.shadowBlur = 12;
@@ -248,12 +515,18 @@ export class Renderer {
       ctx.arc(0, -enemy.radius * 2.05, 8, 0, Math.PI * 2);
       ctx.fill();
     }
-    if (!enemy.dead) {
+    const showBar = enemy.kind !== 'boss' && enemy.targetable && (enemy.hitTimer > 0 || enemy.healthBar.showTimer > 0 || enemy.hp < enemy.maxHp);
+    if (showBar) {
+      const barAlpha = enemy.healthBar.showTimer > 0 ? 1 : 0.35;
+      const low = enemy.healthBar.value / enemy.healthBar.maxValue < 0.3;
+      ctx.globalAlpha = barAlpha * (low ? 0.65 + Math.sin(performance.now() / 70) * 0.25 : 1);
       ctx.shadowBlur = 0;
       ctx.fillStyle = '#111827';
       ctx.fillRect(-enemy.radius, barY, enemy.radius * 2, 8);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(-enemy.radius, barY, enemy.radius * 2 * Math.max(enemy.healthBar.delayedValue / enemy.healthBar.maxValue, 0), 8);
       ctx.fillStyle = enemy.hp / enemy.maxHp < 0.35 ? '#ef4444' : '#22c55e';
-      ctx.fillRect(-enemy.radius, barY, enemy.radius * 2 * Math.max(enemy.hp / enemy.maxHp, 0), 8);
+      ctx.fillRect(-enemy.radius, barY, enemy.radius * 2 * Math.max(enemy.healthBar.value / enemy.healthBar.maxValue, 0), 8);
     }
     ctx.restore();
   }
@@ -262,8 +535,23 @@ export class Renderer {
     (Object.keys(assetManifest.enemies) as Array<keyof typeof assetManifest.enemies>).forEach((kind) => {
       const image = new Image();
       image.onload = () => {
-        if (kind === 'yellow') {
-          this.yellowMonsterFrames = this.makeTransparentYellowFrames(image);
+        if (kind === 'yellowRun') {
+          this.yellowMonsterRunFrames = yellowMonsterSpriteAtlas.frames.run.map((frame) => this.makeFrameCanvas(image, frame));
+        }
+        if (kind === 'yellowHit') {
+          this.yellowMonsterHitFrames = yellowMonsterSpriteAtlas.frames.hit.map((frame) => this.makeFrameCanvas(image, frame));
+        }
+        if (kind === 'yellowDeath') {
+          this.yellowMonsterDeathFrames = yellowMonsterSpriteAtlas.frames.death.map((frame) => this.makeFrameCanvas(image, frame));
+        }
+        if (kind === 'slackerRun') {
+          this.slackerMonsterRunFrames = slackerMonsterSpriteAtlas.frames.run.map((frame) => this.makeFrameCanvas(image, frame));
+        }
+        if (kind === 'slackerHit') {
+          this.slackerMonsterHitFrames = slackerMonsterSpriteAtlas.frames.hit.map((frame) => this.makeFrameCanvas(image, frame));
+        }
+        if (kind === 'slackerDeath') {
+          this.slackerMonsterDeathFrames = slackerMonsterSpriteAtlas.frames.death.map((frame) => this.makeFrameCanvas(image, frame));
         }
         this.enemyReady[kind] = true;
       };
@@ -272,22 +560,50 @@ export class Renderer {
     });
   }
 
-  private makeTransparentYellowFrames(image: HTMLImageElement): Record<EnemyAnimState, HTMLCanvasElement[]> {
-    return {
-      idle: yellowMonsterSpriteAtlas.frames.idle.map((frame) => this.makeTransparentFrame(image, frame)),
-      run: yellowMonsterSpriteAtlas.frames.run.map((frame) => this.makeTransparentFrame(image, frame)),
-      hit: yellowMonsterSpriteAtlas.frames.hit.map((frame) => this.makeTransparentFrame(image, frame)),
-      death: yellowMonsterSpriteAtlas.frames.death.map((frame) => this.makeTransparentFrame(image, frame)),
-    };
+  private loadTowerPartImages(): void {
+    ([
+      'base',
+      'weapon',
+      'muzzleFlash',
+      'bullet',
+      'hitEffect',
+      'machineGunTapeBase',
+      'machineGunTapeWeapon',
+      'machineGunTapeMuzzleFlash',
+      'machineGunTapeBullet',
+      'machineGunTapeHitEffect',
+      'machineGunTapeIcon',
+    ] as TowerPartKey[]).forEach((part) => {
+      const image = new Image();
+      image.onload = () => {
+        this.towerPartReady[part] = true;
+      };
+      image.src = assetManifest.towers[part];
+      this.towerPartImages[part] = image;
+    });
+  }
+
+  private getTowerPartKey(tower: Tower, part: 'base' | 'weapon' | 'muzzleFlash' | 'bullet' | 'hitEffect'): TowerPartKey {
+    if (tower.kind !== 'machineGun') return part;
+    if (part === 'base') return 'machineGunTapeBase';
+    if (part === 'weapon') return 'machineGunTapeWeapon';
+    if (part === 'muzzleFlash') return 'machineGunTapeMuzzleFlash';
+    if (part === 'bullet') return 'machineGunTapeBullet';
+    return 'machineGunTapeHitEffect';
+  }
+
+  private getTowerPartImage(tower: Tower, part: 'base' | 'weapon' | 'muzzleFlash' | 'bullet' | 'hitEffect'): HTMLImageElement | undefined {
+    return this.towerPartImages[this.getTowerPartKey(tower, part)];
+  }
+
+  private isTowerPartReady(tower: Tower, part: 'base' | 'weapon' | 'muzzleFlash' | 'bullet' | 'hitEffect'): boolean {
+    return !!this.towerPartReady[this.getTowerPartKey(tower, part)];
   }
 
   private makeTransparentFrame(image: HTMLImageElement, frame: SpriteFrame): HTMLCanvasElement {
-    const canvas = document.createElement('canvas');
+    const canvas = this.makeFrameCanvas(image, frame);
     const ctx = canvas.getContext('2d');
     if (!ctx) return canvas;
-    canvas.width = frame.w;
-    canvas.height = frame.h;
-    ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
 
     const imageData = ctx.getImageData(0, 0, frame.w, frame.h);
     const { data } = imageData;
@@ -334,28 +650,101 @@ export class Renderer {
     return canvas;
   }
 
+  private makeFrameCanvas(image: HTMLImageElement, frame: SpriteFrame): HTMLCanvasElement {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return canvas;
+    canvas.width = frame.w;
+    canvas.height = frame.h;
+    ctx.drawImage(image, frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
+    return canvas;
+  }
+
   private drawProjectile(projectile: Projectile): void {
     const { ctx } = this;
+    const image = projectile.kind === 'machineGun' ? this.towerPartImages.machineGunTapeBullet : this.towerPartImages.bullet;
+    const ready = projectile.kind === 'machineGun' ? this.towerPartReady.machineGunTapeBullet : this.towerPartReady.bullet;
     const alpha = 1 - projectile.life / projectile.maxLife;
     ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.strokeStyle = projectile.color;
-    ctx.lineWidth = projectile.kind === 'tesla' ? 10 : 7;
+    ctx.globalAlpha = Math.max(0, alpha);
     ctx.shadowColor = projectile.color;
     ctx.shadowBlur = 18;
-    ctx.beginPath();
-    ctx.moveTo(projectile.from.x, projectile.from.y - 40);
-    ctx.lineTo(projectile.to.x, projectile.to.y);
-    ctx.stroke();
-    if (projectile.chain) {
+
+    ctx.translate(projectile.x, projectile.y);
+    ctx.rotate(projectile.angle);
+    if (ready && image) {
+      const width = projectile.kind === 'machineGun' ? 54 : projectile.kind === 'bomb' ? 46 : projectile.kind === 'tesla' ? 58 : 36;
+      const height = projectile.kind === 'machineGun' ? 22 : projectile.kind === 'bomb' ? 32 : 18;
+      ctx.drawImage(image, -width / 2, -height / 2, width, height);
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = Math.max(0, alpha) * 0.55;
+      ctx.fillStyle = projectile.color;
+      ctx.fillRect(-width * 0.24, -height * 0.25, width * 0.7, height * 0.5);
+    } else {
+      const length = projectile.kind === 'tesla' ? 42 : projectile.kind === 'bomb' ? 24 : 34;
+      ctx.strokeStyle = projectile.color;
+      ctx.lineWidth = projectile.kind === 'tesla' ? 10 : projectile.kind === 'machineGun' ? 5 : 7;
       ctx.beginPath();
-      let last = projectile.to;
+      ctx.moveTo(-length, 0);
+      ctx.lineTo(length * 0.25, 0);
+      ctx.stroke();
+      ctx.fillStyle = '#fff7ad';
+      ctx.beginPath();
+      ctx.arc(length * 0.28, 0, projectile.kind === 'bomb' ? 12 : 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    if (projectile.chain) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha) * 0.75;
+      ctx.strokeStyle = projectile.color;
+      ctx.lineWidth = 8;
+      ctx.shadowColor = projectile.color;
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      let last = { x: projectile.x, y: projectile.y };
       projectile.chain.forEach((point) => {
         ctx.moveTo(last.x, last.y);
         ctx.lineTo(point.x, point.y);
         last = point;
       });
       ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  private drawHitEffect(effect: HitEffect): void {
+    const { ctx } = this;
+    const image = effect.kind === 'machineGun' ? this.towerPartImages.machineGunTapeHitEffect : this.towerPartImages.hitEffect;
+    const ready = effect.kind === 'machineGun' ? this.towerPartReady.machineGunTapeHitEffect : this.towerPartReady.hitEffect;
+    ctx.save();
+    ctx.translate(effect.x, effect.y);
+    ctx.globalAlpha = effect.alpha;
+    ctx.scale(effect.scale, effect.scale);
+    ctx.globalCompositeOperation = 'screen';
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 18;
+    if (ready && image) {
+      if (effect.kind === 'machineGun') {
+        ctx.drawImage(image, -36, -28, 72, 54);
+      } else {
+        ctx.drawImage(image, -28, -28, 56, 56);
+      }
+    } else {
+      ctx.fillStyle = '#fff7ad';
+      ctx.beginPath();
+      ctx.arc(0, 0, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fb923c';
+      ctx.lineWidth = 5;
+      for (let i = 0; i < 6; i += 1) {
+        const angle = i * Math.PI / 3 + effect.time * 18;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * 8, Math.sin(angle) * 8);
+        ctx.lineTo(Math.cos(angle) * 26, Math.sin(angle) * 26);
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -366,17 +755,76 @@ export class Renderer {
     ctx.save();
     ctx.globalAlpha = 1 - t;
     ctx.translate(effect.pos.x, effect.pos.y);
-    if (effect.kind === 'coin') {
+    if (effect.kind === 'coin' || effect.kind === 'floatingText') {
+      const pop = t < 0.2 ? 0.7 + t / 0.2 * 0.6 : t < 0.5 ? 1.3 - (t - 0.2) / 0.3 * 0.3 : 1;
+      ctx.translate(effect.offsetX, -t * 80);
+      ctx.scale(pop, pop);
       ctx.fillStyle = effect.color;
-      ctx.font = '900 42px system-ui';
+      ctx.font = `900 ${effect.size}px system-ui`;
       ctx.textAlign = 'center';
       ctx.strokeStyle = '#111827';
-      ctx.lineWidth = 7;
+      ctx.lineWidth = effect.variant === 'warning' ? 10 : 7;
       ctx.strokeText(effect.text ?? '+金币', 0, 0);
       ctx.fillText(effect.text ?? '+金币', 0, 0);
+    } else if (effect.kind === 'spark') {
+      ctx.strokeStyle = effect.color;
+      ctx.lineWidth = 5;
+      for (let i = 0; i < 5; i += 1) {
+        const angle = i * 1.26 + t * 2;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * 5, Math.sin(angle) * 5);
+        ctx.lineTo(Math.cos(angle) * effect.size * (1 + t), Math.sin(angle) * effect.size * (1 + t));
+        ctx.stroke();
+      }
+    } else if (effect.kind === 'frostRing') {
+      ctx.strokeStyle = effect.color;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(0, 0, effect.size * (0.65 + t * 0.6), 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (effect.kind === 'coffeeSplash') {
+      const radius = effect.size * (0.25 + t * 0.9);
+      ctx.strokeStyle = effect.color;
+      ctx.lineWidth = 7 * (1 - t);
+      ctx.shadowColor = '#f6b84a';
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(92,46,18,0.5)';
+      ctx.beginPath();
+      ctx.ellipse(0, 8, radius * 0.78, radius * 0.34, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff3b0';
+      for (let i = 0; i < 5; i += 1) {
+        const angle = i * 1.25 + t * 1.8;
+        const sparkleX = Math.cos(angle) * radius * 0.72;
+        const sparkleY = Math.sin(angle) * radius * 0.5 - 16;
+        ctx.beginPath();
+        ctx.moveTo(sparkleX, sparkleY - 9);
+        ctx.lineTo(sparkleX + 6, sparkleY);
+        ctx.lineTo(sparkleX, sparkleY + 9);
+        ctx.lineTo(sparkleX - 6, sparkleY);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.strokeStyle = 'rgba(255,225,148,0.9)';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(0, 20 - t * 45);
+      ctx.lineTo(0, -16 - t * 65);
+      ctx.moveTo(-18, 2 - t * 42);
+      ctx.lineTo(-18, -30 - t * 58);
+      ctx.moveTo(18, 4 - t * 40);
+      ctx.lineTo(18, -26 - t * 56);
+      ctx.stroke();
     } else {
-      const radius = effect.size * (0.45 + t);
-      ctx.fillStyle = effect.color;
+      const radius = effect.size * (0.1 + t);
+      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+      gradient.addColorStop(0, 'rgba(255,255,255,0.92)');
+      gradient.addColorStop(0.28, effect.color);
+      gradient.addColorStop(1, 'rgba(15,23,42,0)');
+      ctx.fillStyle = gradient;
       ctx.shadowColor = effect.color;
       ctx.shadowBlur = 28;
       ctx.beginPath();
@@ -387,7 +835,69 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(0, 0, radius * 1.35, 0, Math.PI * 2);
       ctx.stroke();
+      if (effect.kind === 'explosion') {
+        ctx.globalAlpha = (1 - t) * 0.34;
+        ctx.fillStyle = 'rgba(71,85,105,0.62)';
+        ctx.beginPath();
+        ctx.ellipse(-radius * 0.25, radius * 0.18, radius * 0.75, radius * 0.34, -0.25, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
+    ctx.restore();
+  }
+
+  private drawBossHealth(enemies: Enemy[]): void {
+    const boss = enemies.find((enemy) => enemy.kind === 'boss' && enemy.targetable);
+    if (!boss) return;
+    const { ctx } = this;
+    const ratio = Math.max(0, boss.healthBar.value / boss.healthBar.maxValue);
+    const delayed = Math.max(0, boss.healthBar.delayedValue / boss.healthBar.maxValue);
+    const low = ratio < 0.3;
+    ctx.save();
+    ctx.translate(DESIGN_WIDTH / 2, 82);
+    ctx.globalAlpha = boss.healthBar.fade;
+    ctx.fillStyle = 'rgba(15,23,42,0.86)';
+    ctx.strokeStyle = low ? `rgba(248,113,113,${0.55 + Math.sin(performance.now() / 70) * 0.35})` : '#f97316';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.roundRect(-420, -26, 840, 52, 16);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#facc15';
+    ctx.fillRect(-402, -12, 804 * delayed, 24);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(-402, -12, 804 * ratio, 24);
+    ctx.fillStyle = '#fef2f2';
+    ctx.font = '900 28px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('老板血压', 0, -42);
+    ctx.restore();
+  }
+
+  private drawBossIntro(time: number, total: number): void {
+    const { ctx } = this;
+    const p = 1 - time / total;
+    ctx.save();
+    ctx.fillStyle = `rgba(0,0,0,${0.32 * Math.sin(Math.min(p, 0.8) * Math.PI)})`;
+    ctx.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+    ctx.strokeStyle = `rgba(239,68,68,${0.85 - p * 0.35})`;
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(pathPoints[0].x, pathPoints[0].y, 58 + Math.sin(performance.now() / 70) * 12, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = Math.min(1, p * 4) * Math.min(1, time * 2);
+    ctx.fillStyle = 'rgba(15,23,42,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(pathPoints[0].x, pathPoints[0].y + 42, 90 + p * 80, 32 + p * 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fef2f2';
+    ctx.strokeStyle = '#7f1d1d';
+    ctx.lineWidth = 12;
+    ctx.font = '900 82px system-ui';
+    ctx.textAlign = 'center';
+    const y = 780 + Math.sin(p * Math.PI) * -26;
+    ctx.strokeText('加班暴君正在靠近！', DESIGN_WIDTH / 2, y);
+    ctx.fillText('加班暴君正在靠近！', DESIGN_WIDTH / 2, y);
     ctx.restore();
   }
 

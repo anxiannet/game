@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { assetManifest } from '../assets/assetManifest';
-import { SpriteFrame, yellowMonsterSpriteAtlas } from '../game/config';
+import { SpriteFrame, slackerMonsterSpriteAtlas, yellowMonsterSpriteAtlas } from '../game/config';
 
 const originalRunFrames: SpriteFrame[] = [
   { x: 28, y: 302, w: 170, h: 122 },
@@ -28,9 +28,10 @@ function drawFrame(canvas: HTMLCanvasElement, image: HTMLImageElement, frame: Sp
 type FrameStripProps = {
   frames: SpriteFrame[];
   label: string;
+  src?: string;
 };
 
-function FrameStrip({ frames, label }: FrameStripProps) {
+function FrameStrip({ frames, label, src = assetManifest.enemies.yellow }: FrameStripProps) {
   const refs = useRef<Array<HTMLCanvasElement | null>>([]);
 
   useEffect(() => {
@@ -41,8 +42,8 @@ function FrameStrip({ frames, label }: FrameStripProps) {
         drawFrame(canvas, image, frames[index]);
       });
     };
-    image.src = assetManifest.enemies.yellow;
-  }, [frames]);
+    image.src = src;
+  }, [frames, src]);
 
   return (
     <section className="yellow-frame-strip">
@@ -69,8 +70,12 @@ export default function YellowFramePreview() {
   return (
     <aside className="yellow-frame-preview">
       <FrameStrip label="原始 8 帧" frames={originalRunFrames} />
-      <FrameStrip label="当前 3-4-5-4" frames={yellowMonsterSpriteAtlas.frames.run} />
-      <FrameStrip label="死亡 2-3-7-8" frames={yellowMonsterSpriteAtlas.frames.death} />
+      <FrameStrip label="跑动 7 帧" frames={yellowMonsterSpriteAtlas.frames.run} src={assetManifest.enemies.yellowRun} />
+      <FrameStrip label="受击 7 帧" frames={yellowMonsterSpriteAtlas.frames.hit} src={assetManifest.enemies.yellowHit} />
+      <FrameStrip label="死亡 7 帧" frames={yellowMonsterSpriteAtlas.frames.death} src={assetManifest.enemies.yellowDeath} />
+      <FrameStrip label="摸鱼跑动 7 帧" frames={slackerMonsterSpriteAtlas.frames.run} src={assetManifest.enemies.slackerRun} />
+      <FrameStrip label="摸鱼受击 7 帧" frames={slackerMonsterSpriteAtlas.frames.hit} src={assetManifest.enemies.slackerHit} />
+      <FrameStrip label="摸鱼死亡 7 帧" frames={slackerMonsterSpriteAtlas.frames.death} src={assetManifest.enemies.slackerDeath} />
     </aside>
   );
 }
