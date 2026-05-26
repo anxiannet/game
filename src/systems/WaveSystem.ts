@@ -1,7 +1,7 @@
 import { buildSpots, EnemyKind, enemyConfigs, MAX_WAVES, pathPoints, towerConfigs, Vec2 } from '../game/config';
 import { Enemy } from '../entities/Enemy';
 
-export type PressureType = 'highSpeed' | 'tank' | 'swarm' | 'chainPack' | 'mixed' | 'bossMix';
+export type PressureType = 'tutorial' | 'highSpeed' | 'tank' | 'swarm' | 'chainPack' | 'mixed' | 'bossMix';
 
 export type WavePressure = {
   label: string;
@@ -32,6 +32,7 @@ type CoverageProfile = {
 };
 
 const spawnOrders: Record<PressureType, EnemyKind[]> = {
+  tutorial: ['yellow'],
   highSpeed: ['slacker', 'slacker', 'yellow', 'slacker', 'yellow'],
   tank: ['overtime', 'requirement', 'overtime', 'yellow'],
   swarm: ['yellow', 'yellow', 'yellow', 'slacker', 'yellow', 'yellow'],
@@ -41,7 +42,7 @@ const spawnOrders: Record<PressureType, EnemyKind[]> = {
 };
 
 const pressureSequence: Array<[PressureType, PressureType]> = [
-  ['swarm', 'mixed'],
+  ['tutorial', 'mixed'],
   ['highSpeed', 'mixed'],
   ['tank', 'chainPack'],
   ['swarm', 'highSpeed'],
@@ -113,6 +114,8 @@ function getPlan(primary: PressureType, secondary: PressureType, wave: number): 
   const swarmOverload = Math.ceil(coverageProfile.machineGunKillsPerSecondVsYellow * (1.75 + tier * 0.22));
 
   switch (primary) {
+    case 'tutorial':
+      return { yellow: 7 };
     case 'highSpeed':
       return {
         slacker: Math.round((10 + fastCoverageSeconds * 2.4 + tier * 3) * pressureScale),
@@ -157,6 +160,7 @@ function getSpawnInterval(primary: PressureType, wave: number): number {
   const tier = Math.floor((wave - 1) / 5);
   const averageCoverageSeconds = coverageProfile.averageCoverage / enemyConfigs.yellow.speed;
   const base = {
+    tutorial: 0.72,
     highSpeed: 0.18,
     tank: 0.58,
     swarm: 0.09,
@@ -178,6 +182,7 @@ function getBurst(primary: PressureType, wave: number): Pick<WavePressure, 'burs
 }
 
 function getPressureCopy(primary: PressureType, secondary: PressureType): Pick<WavePressure, 'label' | 'hint' | 'testGoal'> {
+  if (primary === 'tutorial') return { label: '教学放水', hint: '先摆基础阵，看看怪从哪来', testGoal: '让玩家看懂路线和建塔' };
   if (primary === 'highSpeed') return { label: '高速冲锋', hint: '入口减速，出口补刀', testGoal: '测试减速覆盖和终点补刀' };
   if (primary === 'tank') return { label: '肉盾压线', hint: '刮痧和纯 AOE 都会被顶穿', testGoal: '测试高单发持续输出' };
   if (primary === 'swarm') return { label: '怪海爆仓', hint: '单点塔会疯狂浪费火力', testGoal: '测试弯道 AOE 清场' };
