@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { BASE_HP, economyConfig } from './game/config';
 import { Game, GameStats } from './game/Game';
 import GameHUD from './ui/GameHUD';
 import PathPointTool from './ui/PathPointTool';
@@ -7,11 +8,14 @@ import TowerBar from './ui/TowerBar';
 
 const initialStats: GameStats = {
   wave: 0,
-  hp: 10,
-  coins: 250,
+  hp: BASE_HP,
+  coins: economyConfig.initialCoins,
   kills: 0,
   phase: 'playing',
   speed: 1,
+  shield: 0,
+  completedWaves: 0,
+  wavePreview: '',
   towerLayout: [],
 };
 

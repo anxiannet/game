@@ -1,5 +1,7 @@
+import { economyConfig } from '../game/config';
+
 export class EconomySystem {
-  coins = 250;
+  coins = economyConfig.initialCoins;
 
   canAfford(cost: number): boolean {
     return this.coins >= cost;

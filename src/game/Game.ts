@@ -6,7 +6,18 @@ import { Tower } from '../entities/Tower';
 import { EconomySystem } from '../systems/EconomySystem';
 import { TowerSystem } from '../systems/TowerSystem';
 import { WaveSystem } from '../systems/WaveSystem';
-import { buildSpots, MAX_TOWER_LEVEL, MAX_WAVES, titles, TowerKind, towerConfigs, Vec2 } from './config';
+import {
+  BASE_HP,
+  buildSpots,
+  economyConfig,
+  MAX_TOWER_LEVEL,
+  MAX_WAVES,
+  shieldConfig,
+  titles,
+  TowerKind,
+  towerConfigs,
+  Vec2,
+} from './config';
 import { effectsConfig } from './config/effectsConfig';
 import { ScreenShake, createExplosion, popText } from './effects/animation';
 import { makeEffect, releaseEffect } from './effects/effectPool';
@@ -49,6 +60,10 @@ export type GameStats = {
   selectedSpot?: number;
   selectedTower?: number;
   title?: string;
+  shield: number;
+  completedWaves: number;
+  wavePreview: string;
+  lastFailReason?: string;
 };
 
 export type GameSnapshot = GameStats & {
@@ -85,7 +100,9 @@ export class Game {
   private selectedTower?: number;
   private selectedBuildKind?: TowerKind;
   private towerId = 1;
-  private baseHp = 10;
+  private baseHp = BASE_HP;
+  private shield = 0;
+  private completedWaves = 0;
   private kills = 0;
   private phase: GamePhase = 'playing';
   private speed = 1;
@@ -97,6 +114,8 @@ export class Game {
   private bossIntro = 0;
   private bossIntroTotal = effectsConfig.bossIntroDuration;
   private bossIntroWave?: number;
+  private lastFailReason?: string;
+  private shieldClearedWave?: number;
   private debugEffects = false;
   private statsListener?: (stats: GameStats) => void;
   private resizeHandler: () => void;
@@ -215,7 +234,9 @@ export class Game {
     this.selectedSpot = undefined;
     this.selectedTower = undefined;
     this.selectedBuildKind = undefined;
-    this.baseHp = 10;
+    this.baseHp = BASE_HP;
+    this.shield = 0;
+    this.completedWaves = 0;
     this.kills = 0;
     this.phase = 'playing';
     this.speed = 1;
@@ -227,6 +248,8 @@ export class Game {
     this.bossWarning = 0;
     this.bossIntro = 0;
     this.bossIntroWave = undefined;
+    this.lastFailReason = undefined;
+    this.shieldClearedWave = undefined;
     this.waves.startNextWave();
     this.emitStats();
   }
@@ -249,11 +272,11 @@ export class Game {
       }
     }
 
-    if (this.bossIntro <= 0 && this.waves.shouldAutoStart(this.enemies.length)) {
+    if (this.phase === 'playing' && this.bossIntro <= 0 && this.waves.shouldAutoStart(this.enemies.length)) {
       this.waveDelay -= dt;
       if (this.waveDelay <= 0) {
         const nextWave = this.waves.wave + 1;
-        if (nextWave === 10 || nextWave === 15 || nextWave === 20) {
+        if (this.waves.isBossWave(nextWave)) {
           this.playBossIntro(nextWave);
           this.waveDelay = 0.8;
           return;
@@ -276,6 +299,7 @@ export class Game {
       }
     });
     this.handleDeathsAndLeaks();
+    this.handleWaveCleared();
     this.projectiles = this.projectiles.filter((projectile) => !projectile.done);
     this.hitEffects = this.hitEffects.filter((effect) => !effect.done);
     this.effects = this.effects.filter((effect) => {
@@ -291,6 +315,7 @@ export class Game {
 
   private handleDeathsAndLeaks(): void {
     const spawned: Enemy[] = [];
+    let shieldTriggered = false;
     for (const enemy of this.enemies) {
       if (enemy.dead && !enemy.rewardClaimed) {
         enemy.rewardClaimed = true;
@@ -316,17 +341,57 @@ export class Game {
       }
 
       if (enemy.reachedBase) {
-        this.baseHp = Math.max(0, this.baseHp - enemy.damage);
         this.effects.push(makeEffect('leak', enemy.pos, { color: '#ef4444', size: 90, maxLife: 0.35 }));
         this.screenShake.screenShake({ duration: 0.16, intensity: 24 });
-        if (this.baseHp === 1 && !this.oneHpSlowMoUsed) {
+        if (shieldConfig.triggerOnLeak && this.shield > 0) {
+          this.triggerShield(enemy.pos);
+          shieldTriggered = true;
+          break;
+        }
+        this.baseHp = 0;
+        this.lastFailReason = this.makeFailReason();
+        if (!this.oneHpSlowMoUsed) {
           this.oneHpSlowMoUsed = true;
-          this.slowMo = 2;
-          this.screenShake.screenShake({ duration: 0.2, intensity: 34 });
+          this.slowMo = 1.25;
+          this.screenShake.screenShake({ duration: 0.22, intensity: 38 });
         }
       }
     }
+    if (shieldTriggered) return;
     this.enemies = this.enemies.filter((enemy) => !enemy.readyToRemove && !enemy.reachedBase).concat(spawned);
+  }
+
+  private triggerShield(pos: Vec2): void {
+    this.shield = 0;
+    this.shieldClearedWave = this.waves.wave;
+    this.slowMo = 1.15;
+    this.screenShake.screenShake({ duration: 0.28, intensity: 42 });
+    this.effects.push(createExplosion(pos.x, pos.y, { radius: 210, color: '#60a5fa', shake: true }));
+    this.effects.push(popText('护盾清屏！', 540, 760, { type: 'warning', color: '#dbeafe', size: 70 }));
+    if (shieldConfig.clearScreenOnTrigger) {
+      this.enemies.forEach((item) => {
+        item.reachedBase = false;
+      });
+      this.enemies = [];
+      this.projectiles = [];
+      this.waves.forceCompleteCurrentWave();
+    }
+  }
+
+  private handleWaveCleared(): void {
+    if (this.phase !== 'playing' || this.baseHp <= 0) return;
+    if (this.waves.active || this.enemies.length > 0 || this.waves.wave <= this.completedWaves) return;
+
+    this.completedWaves = this.waves.wave;
+    const bossCleared = this.waves.isBossWave(this.completedWaves);
+    const reward = bossCleared ? economyConfig.bossClearReward : economyConfig.waveClearReward;
+    this.economy.add(reward);
+    this.effects.push(popText(`预算 +${reward}`, 540, 460, { type: 'coin', color: '#fde68a', size: 42 }));
+
+    if (bossCleared && shieldConfig.gainAfterBossWave && this.shieldClearedWave !== this.completedWaves) {
+      this.shield = Math.min(shieldConfig.max, this.shield + 1);
+      this.effects.push(popText('获得护盾', 540, 540, { type: 'warning', color: '#bfdbfe', size: 48 }));
+    }
   }
 
   private endGame(phase: 'won' | 'lost'): void {
@@ -464,6 +529,10 @@ export class Game {
       kills: this.kills,
       phase: this.phase,
       speed: this.speed,
+      shield: this.shield,
+      completedWaves: this.completedWaves,
+      wavePreview: this.makeWavePreview(),
+      lastFailReason: this.lastFailReason,
       towerLayout: this.towers.map((tower) => ({
         kind: tower.kind,
         level: tower.level,
@@ -496,5 +565,21 @@ export class Game {
     if (this.baseHp <= 1) return '差一点战神';
     if (this.waves.wave >= 20) return '工位钉子户';
     return titles[this.waves.wave % titles.length];
+  }
+
+  private makeWavePreview(): string {
+    if (this.phase !== 'playing' && this.phase !== 'paused') return '';
+    const wave = this.waves.active || this.enemies.length > 0 ? this.waves.wave : Math.min(this.waves.wave + 1, MAX_WAVES);
+    return this.waves.getWaveBrief(Math.max(1, wave));
+  }
+
+  private makeFailReason(): string {
+    const reasons = [
+      '不是怪太强，是你阵型没想明白',
+      `第${Math.max(this.waves.wave, 1)}波就噶？建议重新规划塔位`,
+      '你不是输给怪，是输给了摆放位置',
+      '这波需要换阵，不是硬扛',
+    ];
+    return reasons[Math.max(0, this.waves.wave - 1) % reasons.length];
   }
 }

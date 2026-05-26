@@ -48,13 +48,15 @@ export class Enemy {
 
   constructor(id: number, kind: EnemyKind, wave: number, spawnOffset = 0) {
     const cfg = enemyConfigs[kind];
-    const scale = 1 + wave * 0.08;
+    const examCycle = Math.max(0, Math.floor((wave - 2) / 5));
+    const hpScale = wave <= 1 ? 0.82 : 1.1 + examCycle * 0.04;
+    const speedScale = wave <= 1 ? 0.94 : 1.06 + Math.min(examCycle, 3) * 0.015;
     this.id = id;
     this.kind = kind;
     this.pos = { x: pathPoints[0].x - spawnOffset, y: pathPoints[0].y };
-    this.hp = Math.round(cfg.hp * scale);
+    this.hp = Math.round(cfg.hp * hpScale);
     this.maxHp = this.hp;
-    this.speed = cfg.speed * (1 + Math.min(wave, 35) * 0.01);
+    this.speed = cfg.speed * speedScale;
     this.reward = cfg.reward;
     this.damage = cfg.damage;
     this.radius = cfg.radius;

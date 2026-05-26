@@ -8,15 +8,17 @@ type Props = {
 
 export default function ResultScreen({ stats, onRestart }: Props) {
   const [shareStatus, setShareStatus] = useState('');
-  const percent = Math.min(99, Math.max(12, Math.round(stats.wave * 1.7 + stats.kills * 0.09 + stats.hp * 2)));
+  const stressAge = stats.completedWaves;
+  const report = getStressAgeReport(stressAge);
+  const percent = Math.min(99, Math.max(12, Math.round(stressAge * 3.2 + stats.kills * 0.08 + stats.shield * 3)));
 
   if (stats.phase !== 'won' && stats.phase !== 'lost') return null;
   const won = stats.phase === 'won';
-  const shareTitle = won ? '我守住了老板的加班潮' : '这波我真的顶不住了';
+  const shareTitle = `我的抗压年龄 ${stressAge} 岁`;
   const shareText = [
-    `《顶不住了》${won ? '通关炫耀' : '求助战报'}`,
-    `${stats.title}：守到第${stats.wave}波，击败${stats.kills}个，剩余血量${stats.hp}，超过${percent}%玩家。`,
-    won ? '老板今天没能突破我的工位。' : '差一点就守住，真的就差一点。',
+    `我在《顶不住了》测出抗压年龄 ${stressAge} 岁，你敢测吗？`,
+    `${report.title}：通过${stressAge}波，击败${stats.kills}个，超过${percent}%玩家。`,
+    won ? '老板今天没能突破我的工位。' : stats.lastFailReason ?? '这波需要换阵，不是硬扛。',
   ].join('\n');
 
   const handleShare = async () => {
@@ -42,21 +44,36 @@ export default function ResultScreen({ stats, onRestart }: Props) {
   return (
     <div className="result-screen">
       <div className="result-panel">
-        <p>{won ? '守住了' : '顶不住了'}</p>
-        <h1>{stats.title}</h1>
+        <p>{won ? '抗压通关报告' : '抗压年龄报告'}</p>
+        <h1>你的抗压年龄：{stressAge}岁</h1>
+        <h2>{report.title}</h2>
         <div className="result-grid">
-          <div><span>守到</span><strong>第 {stats.wave} 波</strong></div>
+          <div><span>通过</span><strong>{stressAge} 波</strong></div>
           <div><span>击败</span><strong>{stats.kills}</strong></div>
-          <div><span>血量</span><strong>{stats.hp}</strong></div>
+          <div><span>护盾</span><strong>{stats.shield}</strong></div>
           <div><span>超过</span><strong>{percent}%</strong></div>
         </div>
-        <h2>{won ? '发朋友圈炫耀：老板今天没能突破你的工位。' : '发朋友圈求助：差一点就守住，真的就差一点。'}</h2>
+        <h2>{won ? report.description : stats.lastFailReason ?? report.description}</h2>
         <div className="result-actions">
-          <button className="metal-button yellow" onClick={handleShare}><span>{won ? '★' : '!'}</span>{won ? '朋友圈炫耀' : '朋友圈求助'}</button>
+          <button className="metal-button yellow" onClick={handleShare}><span>{won ? '★' : '!'}</span>分享报告</button>
           <button className="metal-button" onClick={onRestart}><span>▶</span>再顶一局</button>
         </div>
         {shareStatus && <div className="share-status">{shareStatus}</div>}
       </div>
     </div>
   );
+}
+
+function getStressAgeReport(waves: number): { title: string; description: string } {
+  if (waves <= 1) return { title: '宝宝抗压选手', description: '你还在熟悉工位，先别急着硬扛。' };
+  if (waves === 2) return { title: '幼儿园小班抗压选手', description: '第2波已经开始验阵，塔位要重新想。' };
+  if (waves === 3) return { title: '幼儿园大班抗压选手', description: '你已经不能和小班宝宝一起玩了。' };
+  if (waves === 4) return { title: '小学生抗压选手', description: '小怪成群没把你冲散，阵型有点东西。' };
+  if (waves === 5) return { title: '初中生抗压选手', description: 'Boss 检定过了，护盾就是你的奖状。' };
+  if (waves <= 7) return { title: '高中生抗压选手', description: '你开始理解什么叫每波都要换阵。' };
+  if (waves <= 9) return { title: '大学生抗压选手', description: '出口补刀和弯道火力，你都吃过亏了。' };
+  if (waves <= 12) return { title: '实习牛马抗压选手', description: '你已经能在高压阵型考试里活很久。' };
+  if (waves <= 15) return { title: '成熟打工人抗压选手', description: '老板的节奏被你摸透了一半。' };
+  if (waves <= 18) return { title: '中年顶梁柱抗压选手', description: '你不是在守基地，你是在扛部门。' };
+  return { title: '退休老干部抗压选手', description: '你已经看淡漏怪，只相信阵型。' };
 }

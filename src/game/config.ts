@@ -2,6 +2,26 @@ export const DESIGN_WIDTH = 1080;
 export const DESIGN_HEIGHT = 1920;
 export const MAX_WAVES = 20;
 export const MAX_TOWER_LEVEL = 3;
+export const BASE_HP = 1;
+
+export const shieldConfig = {
+  max: 1,
+  gainAfterBossWave: true,
+  triggerOnLeak: true,
+  clearScreenOnTrigger: true,
+};
+
+export const sellConfig = {
+  refundRate: 1,
+  includeUpgradeCost: true,
+  cooldown: 0,
+};
+
+export const economyConfig = {
+  initialCoins: 300,
+  waveClearReward: 65,
+  bossClearReward: 90,
+};
 
 export type Vec2 = { x: number; y: number };
 export type TowerKind = 'machineGun' | 'coffee' | 'frost' | 'bomb' | 'tesla';
@@ -108,11 +128,11 @@ export const towerConfigs = {
 }>;
 
 export const enemyConfigs = {
-  yellow: { name: '小黄怪', hp: 40, speed: 160, reward: 3, damage: 1, radius: 22, color: '#facc15' },
-  slacker: { name: '摸鱼怪', hp: 60, speed: 220, reward: 5, damage: 1, radius: 27, color: '#38bdf8' },
-  overtime: { name: '加班怪', hp: 260, speed: 115, reward: 12, damage: 1, radius: 32, color: '#94a3b8' },
-  requirement: { name: '需求怪', hp: 150, speed: 135, reward: 9, damage: 1, radius: 29, color: '#f472b6' },
-  boss: { name: '老板 Boss', hp: 1700, speed: 85, reward: 55, damage: 3, radius: 52, color: '#f97316' },
+  yellow: { name: '小黄怪', hp: 40, speed: 160, reward: 1, damage: 1, radius: 22, color: '#facc15' },
+  slacker: { name: '摸鱼怪', hp: 60, speed: 220, reward: 2, damage: 1, radius: 27, color: '#38bdf8' },
+  overtime: { name: '加班怪', hp: 260, speed: 115, reward: 5, damage: 1, radius: 32, color: '#94a3b8' },
+  requirement: { name: '需求怪', hp: 150, speed: 135, reward: 4, damage: 1, radius: 29, color: '#f472b6' },
+  boss: { name: '老板 Boss', hp: 1700, speed: 85, reward: 25, damage: 1, radius: 52, color: '#f97316' },
 } satisfies Record<EnemyKind, {
   name: string;
   hp: number;

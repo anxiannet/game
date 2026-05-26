@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { BASE_HP } from '../game/config';
 import type { GameStats } from '../game/Game';
 
 type Props = {
@@ -11,7 +12,7 @@ type Props = {
 
 export default function GameHUD({ stats, onPause, onSpeed, onUpgrade, onSell }: Props) {
   const showTowerActions = stats.selectedTower !== undefined && stats.phase === 'playing';
-  const hpRatio = Math.max(0, Math.min(stats.hp / 10, 1));
+  const hpRatio = Math.max(0, Math.min(stats.hp / BASE_HP, 1));
   const hpStyle = { '--hp-width': `${hpRatio * 100}%` } as CSSProperties & Record<'--hp-width', string>;
   const upgradeProgress = Math.max(0, Math.min(stats.selectedTowerUpgradeProgress ?? 0, 1));
   const upgradeProgressStyle = { '--upgrade-progress': `${upgradeProgress * 100}%` } as CSSProperties & Record<'--upgrade-progress', string>;
@@ -27,9 +28,13 @@ export default function GameHUD({ stats, onPause, onSpeed, onUpgrade, onSell }: 
               <path d="M12 21.2 3.9 13.6C-.4 9.6 2.3 2.8 8.1 2.8c1.8 0 3.4.8 4.4 2.2 1-1.4 2.6-2.2 4.4-2.2 5.8 0 8.5 6.8 4.2 10.8L12 21.2Z" />
             </svg>
           </span>
-          <strong><span className="hp-text">{stats.hp}/10</span></strong>
+          <strong><span className="hp-text">{stats.hp}/{BASE_HP}</span></strong>
         </div>
       </div>
+      <div className={`shield-pill ${stats.shield > 0 ? 'ready' : ''}`}>
+        <span>盾</span><strong>{stats.shield}/1</strong>
+      </div>
+      {stats.wavePreview && <div className="wave-preview">{stats.wavePreview}</div>}
       <div className="side-controls">
         <button className="square-button" onClick={onPause} aria-label={stats.phase === 'paused' ? '继续' : '暂停'}>
           <span>{stats.phase === 'paused' ? '继续' : '暂停'}</span>

@@ -1,5 +1,5 @@
 import { Enemy } from './Enemy';
-import { MAX_TOWER_LEVEL, TowerKind, Vec2, machineGunSpriteConfig, towerConfigs } from '../game/config';
+import { MAX_TOWER_LEVEL, TowerKind, Vec2, machineGunSpriteConfig, sellConfig, towerConfigs } from '../game/config';
 
 export type TowerDirection = 'front_left' | 'front' | 'front_right';
 export type TowerAnimState = 'idle' | 'attack' | 'hit' | 'destroy';
@@ -65,7 +65,13 @@ export class Tower {
   }
 
   get sellValue(): number {
-    return Math.round(this.price * 0.65 + (this.level - 1) * this.price * 0.26);
+    let spent = this.price;
+    if (sellConfig.includeUpgradeCost) {
+      for (let level = 1; level < this.level; level += 1) {
+        spent += Math.round(this.price * (0.72 + level * 0.42));
+      }
+    }
+    return Math.round(spent * sellConfig.refundRate);
   }
 
   updateAnimation(dt: number): void {
