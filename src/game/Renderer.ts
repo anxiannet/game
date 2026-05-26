@@ -6,7 +6,8 @@ import { Tower } from '../entities/Tower';
 import { assetManifest } from '../assets/assetManifest';
 import { buildSpots, DESIGN_HEIGHT, DESIGN_WIDTH, MAX_TOWER_LEVEL, pathPoints, slackerMonsterSpriteAtlas, towerConfigs, yellowMonsterSpriteAtlas } from './config';
 import type { EnemySpriteAtlas, SpriteFrame } from './config';
-import { drawDamageTexts, drawParticles } from './effects/proceduralEffects';
+import { drawDamageTexts } from './effects/proceduralEffects';
+import type { SmokeParticle } from './effects/proceduralEffects';
 import type { GameSnapshot } from './Game';
 
 type EnemySpriteFrames = {
@@ -56,6 +57,8 @@ type TowerPartKey =
   | 'wifiTowerLevel2'
   | 'wifiTowerLevel3';
 
+type EffectImageKey = keyof typeof assetManifest.effects;
+
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private mapImage = new Image();
@@ -64,6 +67,9 @@ export class Renderer {
   private enemyReady: Partial<Record<keyof typeof assetManifest.enemies, boolean>> = {};
   private towerPartImages: Partial<Record<TowerPartKey, HTMLImageElement>> = {};
   private towerPartReady: Partial<Record<TowerPartKey, boolean>> = {};
+  private effectImages: Partial<Record<EffectImageKey, HTMLImageElement>> = {};
+  private effectReady: Partial<Record<EffectImageKey, boolean>> = {};
+  private outlinedImageCache: Record<string, HTMLCanvasElement> = {};
   private specialTowerImages: Partial<Record<'bomb' | 'tesla', HTMLImageElement>> = {};
   private specialTowerReady: Partial<Record<'bomb' | 'tesla', boolean>> = {};
   private yellowMonsterRunFrames?: HTMLCanvasElement[];
@@ -86,6 +92,7 @@ export class Renderer {
     this.mapImage.src = assetManifest.maps.industrial;
     this.loadEnemyImages();
     this.loadTowerPartImages();
+    this.loadEffectImages();
     this.loadSpecialTowerImages();
     this.resize();
   }
@@ -112,9 +119,13 @@ export class Renderer {
     snapshot.enemies.forEach((enemy) => this.drawEnemy(ctx, enemy, time));
     snapshot.projectiles.forEach((projectile) => this.drawProjectile(projectile));
     snapshot.hitEffects.forEach((effect) => this.drawHitEffect(effect));
-    drawParticles(ctx, snapshot.particles);
+    this.drawImageParticles(snapshot.particles);
     drawDamageTexts(ctx, snapshot.damageTexts);
-    snapshot.effects.forEach((effect) => this.drawEffect(effect));
+    snapshot.effects.forEach((effect, index) => {
+      if (this.shouldDrawEffect(effect, index, snapshot.effects.length)) {
+        this.drawEffect(effect, snapshot.effects.length > 34);
+      }
+    });
     this.drawMonitorFps(time);
     if (snapshot.phase === 'playing') {
       snapshot.towers.forEach((tower) => {
@@ -141,22 +152,14 @@ export class Renderer {
 
     const { ctx } = this;
     ctx.save();
-    ctx.translate(540, 1518);
+    ctx.translate(540, 1394);
     ctx.rotate(-0.005);
     ctx.globalCompositeOperation = 'source-over';
     ctx.shadowColor = '#38d5ff';
     ctx.shadowBlur = 16;
-    ctx.fillStyle = 'rgba(2, 8, 12, 0.82)';
-    ctx.strokeStyle = 'rgba(56, 213, 255, 0.62)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.roundRect(-88, -34, 176, 68, 8);
-    ctx.fill();
-    ctx.stroke();
-
     ctx.shadowBlur = 10;
     ctx.fillStyle = this.fps >= 50 ? '#86efac' : this.fps >= 35 ? '#fde68a' : '#fca5a5';
-    ctx.font = '900 28px system-ui';
+    ctx.font = '900 20px system-ui';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(`${this.fps} FPS`, 0, 0);
@@ -243,7 +246,6 @@ export class Renderer {
   }
 
   private drawTower(tower: Tower, time: number): void {
-    if (this.drawTowerLevelImage(tower, time)) return;
     if (tower.kind === 'coffee') {
       this.drawCoffeeTower(tower);
       return;
@@ -257,10 +259,12 @@ export class Renderer {
     const cfg = towerConfigs[tower.kind];
     const idleOffsetY = Math.sin(time * 0.004 + tower.idleSeed) * 2;
     const idleScale = 1 + Math.sin(time * 0.003 + tower.idleSeed) * 0.025;
-    const levelScale = this.getTowerLevelScale(tower);
+    const levelScale = this.getTowerLevelScale(tower) * this.getPartTowerVisualScale(tower);
     const attackShake = tower.state === 'attack' ? tower.recoil * 2.4 : 0;
-    const baseX = tower.x + (Math.random() - 0.5) * attackShake;
-    const baseY = tower.y + idleOffsetY + (Math.random() - 0.5) * attackShake;
+    const shakeX = Math.sin(time * 0.075 + tower.idleSeed * 3.1) * attackShake;
+    const shakeY = Math.cos(time * 0.067 + tower.idleSeed * 2.4) * attackShake;
+    const baseX = tower.x + shakeX;
+    const baseY = tower.y + idleOffsetY + shakeY;
     const recoilDistance = tower.recoil * 8;
     const weaponX = tower.x - Math.cos(tower.angle) * recoilDistance;
     const weaponY = tower.y + idleOffsetY - Math.sin(tower.angle) * recoilDistance;
@@ -313,7 +317,7 @@ export class Renderer {
     if (!ready) return false;
 
     const attacking = tower.state === 'attack' || tower.recoilTime > 0;
-    const levelScale = this.getTowerLevelScale(tower);
+    const levelScale = this.getTowerLevelScale(tower) * this.getPartTowerVisualScale(tower);
     const idlePulse = Math.sin(time * 0.0038 + tower.idleSeed);
     const idleBob = attacking ? 0 : idlePulse * 2.4;
     const attackKick = attacking ? Math.sin(Math.max(0, Math.min(1, 1 - tower.recoilTime / 0.16)) * Math.PI) : 0;
@@ -341,12 +345,28 @@ export class Renderer {
     ctx.restore();
 
     this.drawMuzzleFlash(tower, idleBob, levelScale);
+    this.drawTowerLevelText(tower, levelScale);
 
     ctx.save();
     ctx.translate(tower.x, tower.y);
     if (tower.coffeeBoostTimer > 0) this.drawCoffeeBoostBadge(tower, time);
     ctx.restore();
     return true;
+  }
+
+  private drawTowerLevelText(tower: Tower, scale = 1): void {
+    const { ctx } = this;
+    ctx.save();
+    ctx.translate(tower.x, tower.y);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = '700 24px system-ui';
+    ctx.textAlign = 'center';
+    ctx.strokeStyle = '#050505';
+    ctx.lineWidth = 5;
+    ctx.strokeText(String(tower.level), 0, 62 * scale);
+    ctx.fillText(String(tower.level), 0, 62 * scale);
+    ctx.restore();
   }
 
   private drawCoffeeBoostBadge(tower: Tower, time: number): void {
@@ -423,15 +443,15 @@ export class Renderer {
 
     const cfg = towerConfigs[tower.kind];
     const idleOffsetY = Math.sin(time * 0.004 + tower.idleSeed) * 2;
-    const levelScale = this.getTowerLevelScale(tower);
+    const levelScale = this.getTowerLevelScale(tower) * this.getPartTowerVisualScale(tower);
     const attackPulse = tower.state === 'attack' ? 1 + tower.recoil * 0.045 : 1;
     const attackShake = tower.state === 'attack' ? tower.recoil * 3 : 0;
     const drawSize = tower.kind === 'bomb' ? 164 : 172;
 
     ctx.save();
     ctx.translate(
-      tower.x + (Math.random() - 0.5) * attackShake,
-      tower.y + idleOffsetY + (Math.random() - 0.5) * attackShake,
+      tower.x + Math.sin(time * 0.073 + tower.idleSeed * 3.1) * attackShake,
+      tower.y + idleOffsetY + Math.cos(time * 0.061 + tower.idleSeed * 2.4) * attackShake,
     );
     ctx.scale(levelScale * attackPulse, levelScale * attackPulse);
     this.drawTowerReadabilityShadow(tower.state === 'attack' ? 0.72 : 0.62);
@@ -441,16 +461,9 @@ export class Renderer {
     ctx.restore();
 
     this.drawMuzzleFlash(tower, idleOffsetY, levelScale);
-
+    this.drawTowerLevelText(tower, levelScale);
     ctx.save();
     ctx.translate(tower.x, tower.y);
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = '700 24px system-ui';
-    ctx.textAlign = 'center';
-    ctx.strokeStyle = '#050505';
-    ctx.lineWidth = 5;
-    ctx.strokeText(String(tower.level), 0, 62 * levelScale);
-    ctx.fillText(String(tower.level), 0, 62 * levelScale);
     if (tower.coffeeBoostTimer > 0) this.drawCoffeeBoostBadge(tower, time);
     ctx.restore();
   }
@@ -566,18 +579,6 @@ export class Renderer {
       } else {
         ctx.drawImage(image, -14, -24, 52, 48);
       }
-    } else {
-      const gradient = ctx.createRadialGradient(8, 0, 0, 8, 0, 32);
-      gradient.addColorStop(0, 'rgba(255,255,255,1)');
-      gradient.addColorStop(0.36, 'rgba(253,230,138,0.95)');
-      gradient.addColorStop(1, 'rgba(249,115,22,0)');
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.moveTo(-4, -14);
-      ctx.lineTo(46, 0);
-      ctx.lineTo(-4, 14);
-      ctx.closePath();
-      ctx.fill();
     }
     ctx.restore();
   }
@@ -593,8 +594,22 @@ export class Renderer {
     ctx.restore();
   }
 
+  private getPartTowerVisualScale(tower: Tower): number {
+    if (tower.kind === 'machineGun') return 0.84;
+    if (tower.kind === 'frost') return 0.86;
+    if (tower.kind === 'coffee' || tower.kind === 'bomb' || tower.kind === 'tesla') return 0.84;
+    return 1;
+  }
+
   private drawImageWithOutline(image: HTMLImageElement, x: number, y: number, width: number, height: number, outline = 6, alpha = 0.72): void {
     const { ctx } = this;
+    const cached = this.getOutlinedImage(image, width, height, outline, alpha);
+    if (cached) {
+      const pad = Math.ceil(outline * 1.5);
+      ctx.drawImage(cached, x - pad, y - pad);
+      return;
+    }
+
     const offsets = [
       [-outline, 0],
       [outline, 0],
@@ -621,6 +636,44 @@ export class Renderer {
     ctx.restore();
   }
 
+  private getOutlinedImage(image: HTMLImageElement, width: number, height: number, outline: number, alpha: number): HTMLCanvasElement | undefined {
+    if (!image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0) return undefined;
+
+    const drawWidth = Math.ceil(width);
+    const drawHeight = Math.ceil(height);
+    const pad = Math.ceil(outline * 1.5);
+    const key = `${image.src}|${drawWidth}x${drawHeight}|${outline}|${alpha}`;
+    const cached = this.outlinedImageCache[key];
+    if (cached) return cached;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = drawWidth + pad * 2;
+    canvas.height = drawHeight + pad * 2;
+    const cacheCtx = canvas.getContext('2d');
+    if (!cacheCtx) return undefined;
+
+    const offsets = [
+      [-outline, 0],
+      [outline, 0],
+      [0, -outline],
+      [0, outline],
+      [-outline * 0.7, -outline * 0.7],
+      [outline * 0.7, -outline * 0.7],
+      [-outline * 0.7, outline * 0.7],
+      [outline * 0.7, outline * 0.7],
+    ];
+
+    cacheCtx.globalAlpha = alpha;
+    cacheCtx.filter = 'brightness(0) saturate(0)';
+    offsets.forEach(([dx, dy]) => cacheCtx.drawImage(image, pad + dx, pad + dy, drawWidth, drawHeight));
+    cacheCtx.globalAlpha = 1;
+    cacheCtx.filter = 'none';
+    cacheCtx.drawImage(image, pad, pad, drawWidth, drawHeight);
+
+    this.outlinedImageCache[key] = canvas;
+    return canvas;
+  }
+
   private drawCoffeeTower(tower: Tower): void {
     const { ctx } = this;
     const image = this.towerPartImages.coffeeTowerSheet;
@@ -638,7 +691,8 @@ export class Renderer {
     const idlePulse = Math.sin(tower.animTime * 3.2 + tower.idleSeed);
     const idleBob = attacking ? 0 : idlePulse * 2.4;
     const attackKick = Math.sin(attackProgress * Math.PI);
-    const scale = attacking ? 1 + attackKick * 0.045 : 1 + idlePulse * 0.018;
+    const levelScale = this.getTowerLevelScale(tower) * this.getPartTowerVisualScale(tower);
+    const scale = levelScale * (attacking ? 1 + attackKick * 0.045 : 1 + idlePulse * 0.018);
     const recoilX = attacking ? -Math.cos(tower.angle) * tower.recoil * 5 : 0;
     const recoilY = attacking ? -Math.sin(tower.angle) * tower.recoil * 5 : idleBob;
     const glow = attacking ? 20 : 10 + (idlePulse + 1) * 4;
@@ -668,16 +722,14 @@ export class Renderer {
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = '700 24px system-ui';
-    ctx.textAlign = 'center';
-    ctx.strokeStyle = '#050505';
-    ctx.lineWidth = 5;
-    ctx.strokeText(String(tower.level), 0, 62);
-    ctx.fillText(String(tower.level), 0, 62);
-    if (tower.coffeeBoostTimer > 0) this.drawCoffeeBoostBadge(tower, performance.now());
     ctx.restore();
+    this.drawTowerLevelText(tower, levelScale);
+    if (tower.coffeeBoostTimer > 0) {
+      ctx.save();
+      ctx.translate(tower.x, tower.y);
+      this.drawCoffeeBoostBadge(tower, performance.now());
+      ctx.restore();
+    }
   }
 
   private drawEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy, time: number): void {
@@ -858,55 +910,20 @@ export class Renderer {
     ctx.globalAlpha = 0.72;
     ctx.translate(0, enemy.radius * 0.15);
     ctx.rotate(clock * 1.7 + enemy.id * 0.3);
-    ctx.shadowColor = '#38d5ff';
-    ctx.shadowBlur = 16;
     if (ready && image) {
       ctx.drawImage(image, -size / 2, -size / 2, size, size);
-    } else {
-      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.5);
-      gradient.addColorStop(0, 'rgba(255,255,255,0.55)');
-      gradient.addColorStop(0.42, 'rgba(56,213,255,0.35)');
-      gradient.addColorStop(1, 'rgba(56,213,255,0)');
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(0, 0, size * 0.5, 0, Math.PI * 2);
-      ctx.fill();
     }
     ctx.restore();
 
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    ctx.lineCap = 'round';
-    ctx.shadowColor = '#67e8f9';
-    ctx.shadowBlur = 10;
-    for (let i = 0; i < 4; i += 1) {
-      const phase = (clock * 2.4 + i * 0.25 + enemy.id * 0.07) % 1;
-      const y = -enemy.radius * 0.9 + i * enemy.radius * 0.42 + Math.sin(clock * 5 + i) * 5;
-      const startX = -enemy.radius * (1.45 + phase * 0.55);
-      const endX = enemy.radius * (0.8 + phase * 0.65);
-      ctx.globalAlpha = (1 - phase) * 0.52;
-      ctx.strokeStyle = i % 2 === 0 ? '#dffbff' : '#38d5ff';
-      ctx.lineWidth = 4 - phase * 1.8;
-      ctx.beginPath();
-      ctx.moveTo(startX, y);
-      ctx.bezierCurveTo(-enemy.radius * 0.55, y - 12, enemy.radius * 0.18, y + 12, endX, y - 4);
-      ctx.stroke();
-    }
-    ctx.fillStyle = '#d9f99d';
-    ctx.globalAlpha = 0.55 + Math.sin(clock * 8 + enemy.id) * 0.18;
-    for (let i = 0; i < 3; i += 1) {
-      const angle = clock * 3.8 + i * 2.1 + enemy.id;
-      const x = Math.cos(angle) * enemy.radius * 1.15;
-      const y = Math.sin(angle * 0.8) * enemy.radius * 0.65 - enemy.radius * 0.2;
+    if (ready && image) {
       ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 7, 3.5, 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = 0.34;
+      ctx.translate(Math.sin(clock * 3 + enemy.id) * enemy.radius * 0.18, -enemy.radius * 0.25);
+      ctx.rotate(-clock * 1.1 - enemy.id * 0.2);
+      ctx.drawImage(image, -size * 0.38, -size * 0.38, size * 0.76, size * 0.76);
       ctx.restore();
     }
-    ctx.restore();
   }
 
   private loadEnemyImages(): void {
@@ -986,6 +1003,17 @@ export class Renderer {
       };
       image.src = assetManifest.towers[part];
       this.towerPartImages[part] = image;
+    });
+  }
+
+  private loadEffectImages(): void {
+    (Object.keys(assetManifest.effects) as EffectImageKey[]).forEach((kind) => {
+      const image = new Image();
+      image.onload = () => {
+        this.effectReady[kind] = true;
+      };
+      image.src = assetManifest.effects[kind];
+      this.effectImages[kind] = image;
     });
   }
 
@@ -1130,154 +1158,66 @@ export class Renderer {
     const alpha = 1 - projectile.life / projectile.maxLife;
     ctx.save();
     ctx.globalAlpha = Math.max(0, alpha);
-    ctx.shadowColor = projectile.color;
-    ctx.shadowBlur = 18;
-
     ctx.translate(projectile.x, projectile.y);
     ctx.rotate(projectile.angle);
     if (ready && image) {
       const width = projectile.kind === 'machineGun' ? 54 : projectile.kind === 'frost' ? 72 : projectile.kind === 'tesla' ? 58 : 36;
       const height = projectile.kind === 'machineGun' ? 22 : projectile.kind === 'frost' ? 46 : 18;
       ctx.drawImage(image, -width / 2, -height / 2, width, height);
-      ctx.globalCompositeOperation = 'screen';
-      ctx.globalAlpha = Math.max(0, alpha) * 0.55;
-      ctx.fillStyle = projectile.color;
-      ctx.fillRect(-width * 0.24, -height * 0.25, width * 0.7, height * 0.5);
-    } else {
-      const length = projectile.kind === 'tesla' ? 42 : 34;
-      ctx.strokeStyle = projectile.color;
-      ctx.lineWidth = projectile.kind === 'tesla' ? 10 : projectile.kind === 'machineGun' ? 5 : 7;
-      ctx.beginPath();
-      ctx.moveTo(-length, 0);
-      ctx.lineTo(length * 0.25, 0);
-      ctx.stroke();
-      ctx.fillStyle = '#fff7ad';
-      ctx.beginPath();
-      ctx.arc(length * 0.28, 0, 5, 0, Math.PI * 2);
-      ctx.fill();
     }
     ctx.restore();
 
     if (projectile.chain) {
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, alpha) * 0.75;
-      ctx.strokeStyle = projectile.color;
-      ctx.lineWidth = 8;
-      ctx.shadowColor = projectile.color;
-      ctx.shadowBlur = 18;
       let last = { x: projectile.x, y: projectile.y };
       projectile.chain.forEach((point) => {
-        this.drawJaggedLine(last, point, 11, 18);
+        this.drawChainImage(last, point, projectile.life / projectile.maxLife, Math.max(0, alpha) * 0.82);
         last = point;
       });
-      ctx.globalAlpha = Math.max(0, alpha) * 0.95;
-      ctx.strokeStyle = '#dbeafe';
-      ctx.lineWidth = 3;
-      last = { x: projectile.x, y: projectile.y };
-      projectile.chain.forEach((point) => {
-        this.drawJaggedLine(last, point, 7, 10);
-        last = point;
-      });
-      ctx.restore();
     }
   }
 
   private drawBurntEggProjectile(projectile: Projectile): void {
-    const { ctx } = this;
     const progress = Math.max(0, Math.min(1, projectile.life / projectile.maxLife));
     const alpha = Math.max(0, 1 - progress * 0.35);
     const spin = projectile.spin ? projectile.life * projectile.spin : projectile.life * 8;
-
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.translate(projectile.x, projectile.y);
-    ctx.rotate(projectile.angle + spin);
-    ctx.shadowColor = '#fb923c';
-    ctx.shadowBlur = 22;
-
-    const eggGradient = ctx.createRadialGradient(-8, -7, 2, 0, 0, 27);
-    eggGradient.addColorStop(0, '#fff7d6');
-    eggGradient.addColorStop(0.48, '#f5e1a5');
-    eggGradient.addColorStop(0.76, '#b7791f');
-    eggGradient.addColorStop(1, '#1f1208');
-    ctx.fillStyle = eggGradient;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 31, 22, -0.22, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = '#2a170b';
-    ctx.lineWidth = 5;
-    ctx.stroke();
-
-    ctx.fillStyle = '#f59e0b';
-    ctx.shadowColor = '#facc15';
-    ctx.shadowBlur = 10;
-    ctx.beginPath();
-    ctx.arc(4, -2, 10, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#5b2508';
-    ctx.globalAlpha = alpha * 0.86;
-    ctx.beginPath();
-    ctx.arc(-14, -8, 6, 0, Math.PI * 2);
-    ctx.arc(16, 8, 5, 0, Math.PI * 2);
-    ctx.arc(-3, 13, 4, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.globalAlpha = alpha * 0.9;
-    ctx.strokeStyle = '#fed7aa';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(-24, -4);
-    ctx.quadraticCurveTo(-11, -18, 9, -16);
-    ctx.stroke();
-    ctx.restore();
+    const image = this.effectReady.microwaveExplosion ? this.effectImages.microwaveExplosion : this.towerPartImages.bullet;
+    if (!image) return;
+    if (this.effectReady.microwaveExplosion) {
+      this.drawSheetImage(image, progress * 0.65, projectile.x, projectile.y, 72, alpha, projectile.angle + spin);
+      return;
+    }
+    this.drawSimpleImage(image, projectile.x, projectile.y, 58, alpha, projectile.angle + spin);
   }
 
   private drawCoffeeJet(projectile: Projectile): void {
-    const { ctx } = this;
     const t = projectile.life / projectile.maxLife;
     const alpha = Math.max(0, 1 - t);
-    const midX = (projectile.from.x + projectile.to.x) / 2;
-    const midY = (projectile.from.y + projectile.to.y) / 2 - 34 - Math.sin(t * Math.PI) * 20;
+    const image = this.effectReady.coffeeSpraySteam ? this.effectImages.coffeeSpraySteam : this.towerPartImages.coffeeTowerBullet;
+    if (!image) return;
 
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.globalCompositeOperation = 'screen';
-    ctx.strokeStyle = '#f6b84a';
-    ctx.lineWidth = 14 * (1 - t * 0.55);
-    ctx.lineCap = 'round';
-    ctx.shadowColor = '#f6b84a';
-    ctx.shadowBlur = 18;
-    ctx.beginPath();
-    ctx.moveTo(projectile.from.x, projectile.from.y);
-    ctx.quadraticCurveTo(midX, midY, projectile.to.x, projectile.to.y);
-    ctx.stroke();
-    ctx.strokeStyle = '#fff3b0';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(projectile.from.x, projectile.from.y - 4);
-    ctx.quadraticCurveTo(midX, midY - 12, projectile.to.x, projectile.to.y - 5);
-    ctx.stroke();
-    ctx.restore();
+    for (let i = 0; i < 3; i += 1) {
+      const p = Math.min(1, t + i * 0.18);
+      const x = projectile.from.x + (projectile.to.x - projectile.from.x) * p;
+      const y = projectile.from.y + (projectile.to.y - projectile.from.y) * p - Math.sin(p * Math.PI) * 30;
+      if (this.effectReady.coffeeSpraySteam) {
+        this.drawSheetImage(image, p, x, y, 64 - i * 8, alpha * (1 - i * 0.18), projectile.angle);
+      } else {
+        this.drawSimpleImage(image, x, y, 44 - i * 6, alpha * (1 - i * 0.18), projectile.angle);
+      }
+    }
   }
 
-  private drawJaggedLine(from: { x: number; y: number }, to: { x: number; y: number }, steps: number, jitter: number): void {
-    const { ctx } = this;
+  private drawChainImage(from: { x: number; y: number }, to: { x: number; y: number }, progress: number, alpha: number): void {
+    const image = this.effectReady.wifiElectricArc ? this.effectImages.wifiElectricArc : this.towerPartImages.hitEffect;
+    if (!image) return;
+
     const dx = to.x - from.x;
     const dy = to.y - from.y;
-    const length = Math.hypot(dx, dy) || 1;
-    const nx = -dy / length;
-    const ny = dx / length;
-    ctx.beginPath();
-    ctx.moveTo(from.x, from.y);
-    for (let i = 1; i < steps; i += 1) {
-      const p = i / steps;
-      const wave = Math.sin((performance.now() * 0.035 + i * 2.7) * (i % 2 ? 1 : -1));
-      const offset = wave * jitter * (0.35 + Math.random() * 0.65);
-      ctx.lineTo(from.x + dx * p + nx * offset, from.y + dy * p + ny * offset);
-    }
-    ctx.lineTo(to.x, to.y);
-    ctx.stroke();
+    const length = Math.hypot(dx, dy);
+    const x = from.x + dx * 0.5;
+    const y = from.y + dy * 0.5;
+    const angle = Math.atan2(dy, dx);
+    this.drawSheetImage(image, progress, x, y, Math.min(230, Math.max(84, length * 0.82)), alpha, angle);
   }
 
   private drawHitEffect(effect: HitEffect): void {
@@ -1301,8 +1241,6 @@ export class Renderer {
     ctx.globalAlpha = effect.alpha;
     ctx.scale(effect.scale, effect.scale);
     ctx.globalCompositeOperation = 'screen';
-    ctx.shadowColor = '#fbbf24';
-    ctx.shadowBlur = 18;
     if (ready && image) {
       if (effect.kind === 'machineGun') {
         ctx.drawImage(image, -36, -28, 72, 54);
@@ -1311,31 +1249,35 @@ export class Renderer {
       } else {
         ctx.drawImage(image, -28, -28, 56, 56);
       }
-    } else {
-      ctx.fillStyle = '#fff7ad';
-      ctx.beginPath();
-      ctx.arc(0, 0, 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#fb923c';
-      ctx.lineWidth = 5;
-      for (let i = 0; i < 6; i += 1) {
-        const angle = i * Math.PI / 3 + effect.time * 18;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(angle) * 8, Math.sin(angle) * 8);
-        ctx.lineTo(Math.cos(angle) * 26, Math.sin(angle) * 26);
-        ctx.stroke();
-      }
     }
     ctx.restore();
   }
 
-  private drawEffect(effect: Effect): void {
+  private drawImageParticles(particles: SmokeParticle[]): void {
+    const image = this.effectReady.coffeeSpraySteam ? this.effectImages.coffeeSpraySteam : this.effectImages.microwaveExplosion;
+    if (!image) return;
+
+    for (const particle of particles) {
+      const t = particle.life / particle.maxLife;
+      const size = particle.radius * 3.1;
+      this.drawSheetImage(image, t, particle.x, particle.y, size, particle.alpha * 0.5, particle.vx * 0.01);
+    }
+  }
+
+  private shouldDrawEffect(effect: Effect, index: number, total: number): boolean {
+    if (total <= 54) return true;
+    if (effect.kind === 'spark' || effect.kind === 'steam') return index % 2 === 0;
+    if (total > 72 && (effect.kind === 'frostRing' || effect.kind === 'electricArc')) return index % 2 === 0;
+    return true;
+  }
+
+  private drawEffect(effect: Effect, compact = false): void {
     const { ctx } = this;
     const t = effect.life / effect.maxLife;
-    ctx.save();
-    ctx.globalAlpha = 1 - t;
-    ctx.translate(effect.pos.x, effect.pos.y);
     if (effect.kind === 'coin' || effect.kind === 'floatingText') {
+      ctx.save();
+      ctx.globalAlpha = 1 - t;
+      ctx.translate(effect.pos.x, effect.pos.y);
       const pop = t < 0.2 ? 0.7 + t / 0.2 * 0.6 : t < 0.5 ? 1.3 - (t - 0.2) / 0.3 * 0.3 : 1;
       ctx.translate(effect.offsetX, -t * 80);
       ctx.scale(pop, pop);
@@ -1346,137 +1288,78 @@ export class Renderer {
       ctx.lineWidth = effect.variant === 'warning' ? 10 : 7;
       ctx.strokeText(effect.text ?? '+金币', 0, 0);
       ctx.fillText(effect.text ?? '+金币', 0, 0);
-    } else if (effect.kind === 'spark') {
-      ctx.strokeStyle = effect.color;
-      ctx.lineWidth = 5;
-      for (let i = 0; i < 5; i += 1) {
-        const angle = i * 1.26 + t * 2;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(angle) * 5, Math.sin(angle) * 5);
-        ctx.lineTo(Math.cos(angle) * effect.size * (1 + t), Math.sin(angle) * effect.size * (1 + t));
-        ctx.stroke();
-      }
-    } else if (effect.kind === 'frostRing') {
-      ctx.strokeStyle = effect.color;
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.arc(0, 0, effect.size * (0.65 + t * 0.6), 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (effect.kind === 'coffeeSplash') {
-      const radius = effect.size * (0.25 + t * 0.9);
-      ctx.strokeStyle = effect.color;
-      ctx.lineWidth = 7 * (1 - t);
-      ctx.shadowColor = '#f6b84a';
-      ctx.shadowBlur = 18;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(92,46,18,0.5)';
-      ctx.beginPath();
-      ctx.ellipse(0, 8, radius * 0.78, radius * 0.34, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fff3b0';
-      for (let i = 0; i < 5; i += 1) {
-        const angle = i * 1.25 + t * 1.8;
-        const sparkleX = Math.cos(angle) * radius * 0.72;
-        const sparkleY = Math.sin(angle) * radius * 0.5 - 16;
-        ctx.beginPath();
-        ctx.moveTo(sparkleX, sparkleY - 9);
-        ctx.lineTo(sparkleX + 6, sparkleY);
-        ctx.lineTo(sparkleX, sparkleY + 9);
-        ctx.lineTo(sparkleX - 6, sparkleY);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.strokeStyle = 'rgba(255,225,148,0.9)';
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(0, 20 - t * 45);
-      ctx.lineTo(0, -16 - t * 65);
-      ctx.moveTo(-18, 2 - t * 42);
-      ctx.lineTo(-18, -30 - t * 58);
-      ctx.moveTo(18, 4 - t * 40);
-      ctx.lineTo(18, -26 - t * 56);
-      ctx.stroke();
-    } else if (effect.kind === 'heatWave') {
-      const radius = effect.size * (0.2 + t * 1.05);
-      ctx.globalCompositeOperation = 'screen';
-      ctx.strokeStyle = `rgba(254,215,170,${0.9 - t * 0.65})`;
-      ctx.lineWidth = 10 * (1 - t);
-      ctx.shadowColor = '#fb923c';
-      ctx.shadowBlur = 30;
-      for (let i = 0; i < 3; i += 1) {
-        ctx.beginPath();
-        ctx.ellipse(0, 0, radius * (1 + i * 0.18), radius * (0.48 + i * 0.12), Math.sin(t * 5 + i) * 0.12, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.strokeStyle = `rgba(255,247,237,${0.38 - t * 0.25})`;
-      ctx.lineWidth = 5;
-      for (let i = 0; i < 7; i += 1) {
-        const x = (i - 3) * radius * 0.24;
-        ctx.beginPath();
-        ctx.moveTo(x, radius * 0.28);
-        ctx.bezierCurveTo(x + 14, radius * 0.05, x - 18, -radius * 0.12, x + 10, -radius * 0.32);
-        ctx.stroke();
-      }
-    } else if (effect.kind === 'steam') {
-      ctx.globalCompositeOperation = 'screen';
-      ctx.strokeStyle = `rgba(254,243,199,${0.68 - t * 0.42})`;
-      ctx.lineWidth = 7 * (1 - t * 0.35);
-      ctx.lineCap = 'round';
-      ctx.shadowColor = '#fde68a';
-      ctx.shadowBlur = 15;
-      for (let i = 0; i < 4; i += 1) {
-        const x = (i - 1.5) * 18;
-        ctx.beginPath();
-        ctx.moveTo(x, 16 - t * 20);
-        ctx.bezierCurveTo(x - 18, -8 - t * 28, x + 22, -28 - t * 38, x + Math.sin(t * 6 + i) * 14, -58 - t * 44);
-        ctx.stroke();
-      }
-    } else if (effect.kind === 'electricArc') {
-      ctx.globalCompositeOperation = 'screen';
-      ctx.strokeStyle = effect.color;
-      ctx.lineWidth = 5;
-      ctx.shadowColor = '#60a5fa';
-      ctx.shadowBlur = 20;
-      for (let i = 0; i < 5; i += 1) {
-        const angle = i * 1.26 + t * 4;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(angle) * effect.size * 0.2, Math.sin(angle) * effect.size * 0.2);
-        ctx.lineTo(Math.cos(angle + 0.22) * effect.size, Math.sin(angle + 0.22) * effect.size);
-        ctx.lineTo(Math.cos(angle + 0.55) * effect.size * 0.62, Math.sin(angle + 0.55) * effect.size * 0.62);
-        ctx.stroke();
-      }
-      ctx.fillStyle = '#dbeafe';
-      ctx.beginPath();
-      ctx.arc(0, 0, effect.size * 0.16, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      const radius = effect.size * (0.1 + t);
-      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-      gradient.addColorStop(0, 'rgba(255,255,255,0.92)');
-      gradient.addColorStop(0.28, effect.color);
-      gradient.addColorStop(1, 'rgba(15,23,42,0)');
-      ctx.fillStyle = gradient;
-      ctx.shadowColor = effect.color;
-      ctx.shadowBlur = 28;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius * 1.35, 0, Math.PI * 2);
-      ctx.stroke();
-      if (effect.kind === 'explosion') {
-        ctx.globalAlpha = (1 - t) * 0.34;
-        ctx.fillStyle = 'rgba(71,85,105,0.62)';
-        ctx.beginPath();
-        ctx.ellipse(-radius * 0.25, radius * 0.18, radius * 0.75, radius * 0.34, -0.25, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      ctx.restore();
+      return;
     }
+
+    const alpha = Math.max(0, 1 - t);
+    if (effect.kind === 'muzzle') {
+      const image = this.getMuzzleImage(effect.variant);
+      if (image) this.drawSimpleImage(image, effect.pos.x, effect.pos.y, effect.size * (1.9 - t * 0.45), alpha, t * 0.6);
+    } else if (effect.kind === 'spark' || effect.kind === 'frostRing') {
+      const image = this.getHitImage(effect.variant);
+      if (image) this.drawSimpleImage(image, effect.pos.x, effect.pos.y, effect.size * (effect.kind === 'frostRing' ? 2.1 : 1.7), alpha, t * 1.2);
+    } else if (effect.kind === 'coffeeSplash' || effect.kind === 'steam') {
+      const image = this.effectReady.coffeeSpraySteam ? this.effectImages.coffeeSpraySteam : this.getHitImage('coffee');
+      if (image) this.drawSheetImage(image, t, effect.pos.x, effect.pos.y, effect.size * (effect.kind === 'coffeeSplash' ? 1.6 : 1.35), alpha, -0.1);
+    } else if (effect.kind === 'electricArc') {
+      const image = this.effectReady.wifiElectricArc ? this.effectImages.wifiElectricArc : this.getHitImage('tesla');
+      if (image) this.drawSheetImage(image, t, effect.pos.x, effect.pos.y, effect.size * 2.4, alpha, 0.15);
+    } else if (effect.kind === 'explosion' || effect.kind === 'heatWave' || effect.kind === 'leak') {
+      const image = this.effectReady.microwaveExplosion ? this.effectImages.microwaveExplosion : this.getHitImage(effect.variant);
+      const size = effect.kind === 'leak' ? effect.size * 1.2 : effect.size * (compact ? 1.45 : 1.75);
+      if (image) this.drawSheetImage(image, t, effect.pos.x, effect.pos.y, size, alpha, 0);
+    } else {
+      const image = this.getHitImage(effect.variant);
+      if (image) this.drawSimpleImage(image, effect.pos.x, effect.pos.y, effect.size * 1.6, alpha, t);
+    }
+  }
+
+  private drawSimpleImage(image: HTMLImageElement, x: number, y: number, size: number, alpha: number, rotation = 0): void {
+    if (!image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0) return;
+
+    const { ctx } = this;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.globalCompositeOperation = 'screen';
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
+    ctx.drawImage(image, -size / 2, -size / 2, size, size);
     ctx.restore();
+  }
+
+  private drawSheetImage(image: HTMLImageElement, progress: number, x: number, y: number, size: number, alpha: number, rotation = 0): void {
+    if (!image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0) return;
+
+    const frameCount = 6;
+    const frame = Math.min(frameCount - 1, Math.max(0, Math.floor(progress * frameCount)));
+    const frameWidth = image.naturalWidth / frameCount;
+    const frameHeight = image.naturalHeight;
+    const drawWidth = size;
+    const drawHeight = size * (frameHeight / frameWidth);
+
+    const { ctx } = this;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.globalCompositeOperation = 'screen';
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
+    ctx.drawImage(image, frame * frameWidth, 0, frameWidth, frameHeight, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+    ctx.restore();
+  }
+
+  private getMuzzleImage(variant: Effect['variant']): HTMLImageElement | undefined {
+    if (variant === 'machineGun') return this.towerPartImages.machineGunTapeMuzzleFlash;
+    if (variant === 'coffee') return this.towerPartImages.coffeeTowerMuzzleFlash;
+    if (variant === 'frost') return this.towerPartImages.fanSlowMuzzleFlash;
+    return this.towerPartImages.muzzleFlash;
+  }
+
+  private getHitImage(variant: Effect['variant']): HTMLImageElement | undefined {
+    if (variant === 'machineGun') return this.towerPartImages.machineGunTapeHitEffect;
+    if (variant === 'coffee') return this.towerPartImages.coffeeTowerHitEffect;
+    if (variant === 'frost') return this.towerPartImages.fanSlowHitEffect;
+    return this.towerPartImages.hitEffect;
   }
 
   private drawBossHealth(enemies: Enemy[]): void {

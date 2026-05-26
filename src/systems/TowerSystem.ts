@@ -1,5 +1,5 @@
 import { Enemy } from '../entities/Enemy';
-import { Effect } from '../entities/Effect';
+import { Effect, type EffectKind, type EffectVariant } from '../entities/Effect';
 import { HitEffect } from '../entities/HitEffect';
 import { Projectile } from '../entities/Projectile';
 import { Tower } from '../entities/Tower';
@@ -8,6 +8,18 @@ import { makeEffect } from '../game/effects/effectPool';
 import { playBombExplosion, playEnemyHit, playTowerAttack } from '../game/effects/feedback';
 import { spawnDamageText, type DamageText } from '../game/effects/proceduralEffects';
 import { distance, inRange } from './CollisionSystem';
+
+type AttackEffectOptions = {
+  color?: string;
+  size?: number;
+  maxLife?: number;
+  variant?: EffectVariant;
+  shake?: boolean;
+};
+
+const MAX_ATTACK_EFFECTS = 46;
+const MAX_HIT_EFFECTS = 34;
+const SECONDARY_EFFECT_KINDS = new Set<EffectKind>(['spark', 'frostRing', 'steam', 'electricArc']);
 
 export class TowerSystem {
   update(dt: number, towers: Tower[], enemies: Enemy[], projectiles: Projectile[], effects: Effect[], damageTexts: DamageText[], hitEffects: HitEffect[]): void {
@@ -101,12 +113,14 @@ export class TowerSystem {
     tower.recoilTime = 0.16;
     tower.muzzleTimer = 0.16;
     tower.state = 'attack';
-    effects.push(makeEffect('coffeeSplash', tower.pos, { color: '#f6b84a', size: tower.range * 0.32, maxLife: 0.55, variant: 'coffee' }));
+    this.addAttackEffect(effects, 'coffeeSplash', tower.pos, { color: '#f6b84a', size: tower.range * 0.32, maxLife: 0.42, variant: 'coffee' }, true);
 
     boostTargets.forEach((target, index) => {
       target.coffeeBoostTimer = Math.max(target.coffeeBoostTimer, 1.55 + tower.level * 0.18);
       target.coffeeBoostStrength = Math.max(target.coffeeBoostStrength, 0.2 + tower.level * 0.035);
-      effects.push(makeEffect('steam', target.pos, { color: '#fde68a', size: 48 + target.level * 5, maxLife: 0.68, variant: 'coffee' }));
+      if (index < 3) {
+        this.addAttackEffect(effects, 'steam', target.pos, { color: '#fde68a', size: 48 + target.level * 5, maxLife: 0.45, variant: 'coffee' });
+      }
       const from = {
         x: tower.x + Math.cos(tower.angle) * 54,
         y: tower.y + Math.sin(tower.angle) * 54,
@@ -149,7 +163,8 @@ export class TowerSystem {
   }
 
   createHitEffect(hitEffects: HitEffect[], pos: { x: number; y: number }, kind?: Tower['kind']): void {
-    hitEffects.push(new HitEffect(pos, 0.25, kind));
+    if (hitEffects.length >= MAX_HIT_EFFECTS && kind !== 'bomb') return;
+    hitEffects.push(new HitEffect(pos, kind === 'machineGun' ? 0.18 : 0.22, kind));
   }
 
   private findBulletHit(projectile: Projectile, enemies: Enemy[]): Enemy | undefined {
@@ -167,27 +182,35 @@ export class TowerSystem {
       const fannedFire = target.burnTimer > 0;
       if (fannedFire) {
         target.fanTheFlames(1.65, 1.8);
-        effects.push(makeEffect('heatWave', target.pos, { color: '#fb923c', size: target.radius + 44, maxLife: 0.32, variant: 'bomb' }));
+        this.addAttackEffect(effects, 'heatWave', target.pos, { color: '#fb923c', size: target.radius + 44, maxLife: 0.28, variant: 'bomb' });
       }
       this.damageEnemy(target, tower.damage * (fannedFire ? 1.75 : 1), effects, damageTexts, fannedFire);
+      let frostRings = 0;
       enemies.forEach((enemy) => {
         if (enemy.targetable && distance(enemy.pos, target.pos) < 95) {
           enemy.applySlow(1.45);
           if (enemy.burnTimer > 0) {
             enemy.fanTheFlames(1.45, 1.55);
-            effects.push(makeEffect('heatWave', enemy.pos, { color: '#fb923c', size: enemy.radius + 28, maxLife: 0.26, variant: 'bomb' }));
+            this.addAttackEffect(effects, 'heatWave', enemy.pos, { color: '#fb923c', size: enemy.radius + 28, maxLife: 0.22, variant: 'bomb' });
           }
-          effects.push(makeEffect('frostRing', enemy.pos, { color: '#67e8f9', size: enemy.radius + 16, maxLife: 0.38, variant: 'frost' }));
+          if (frostRings < 3) {
+            frostRings += 1;
+            this.addAttackEffect(effects, 'frostRing', enemy.pos, { color: '#67e8f9', size: enemy.radius + 16, maxLife: 0.3, variant: 'frost' });
+          }
         }
       });
     } else if (tower.kind === 'bomb') {
       playBombExplosion(target.pos.x, target.pos.y, effects);
-      effects.push(makeEffect('heatWave', target.pos, { color: '#fed7aa', size: 138, maxLife: 0.52, variant: 'bomb', shake: tower.level >= 3 }));
+      this.addAttackEffect(effects, 'heatWave', target.pos, { color: '#fed7aa', size: 138, maxLife: 0.42, variant: 'bomb', shake: tower.level >= 3 }, true);
+      let sparks = 0;
       enemies.forEach((enemy) => {
         if (enemy.targetable && distance(enemy.pos, target.pos) < 126) {
           this.damageEnemy(enemy, tower.damage, effects, damageTexts, tower.level >= 3);
           enemy.applyBurn(7 + tower.level * 2.5, 3.2 + tower.level * 0.45);
-          effects.push(makeEffect('spark', enemy.pos, { color: '#fb923c', size: enemy.radius + 14, maxLife: 0.28, variant: 'bomb' }));
+          if (sparks < 4) {
+            sparks += 1;
+            this.addAttackEffect(effects, 'spark', enemy.pos, { color: '#fb923c', size: enemy.radius + 14, maxLife: 0.2, variant: 'bomb' });
+          }
         }
       });
     } else if (tower.kind === 'tesla') {
@@ -197,11 +220,13 @@ export class TowerSystem {
         .slice(0, tower.level >= 3 ? 5 : 4);
       chain.forEach((enemy, index) => {
         this.damageEnemy(enemy, tower.damage * (1 - index * 0.16), effects, damageTexts);
-        effects.push(makeEffect('electricArc', enemy.pos, { color: '#93c5fd', size: enemy.radius + 28, maxLife: 0.18 + index * 0.03, variant: 'tesla' }));
+        if (index < 3) {
+          this.addAttackEffect(effects, 'electricArc', enemy.pos, { color: '#93c5fd', size: enemy.radius + 28, maxLife: 0.14 + index * 0.02, variant: 'tesla' });
+        }
       });
     } else {
       this.damageEnemy(target, tower.damage, effects, damageTexts, Math.random() < 0.08);
-      effects.push(makeEffect('spark', target.pos, { color: '#fde68a', size: 20, maxLife: 0.18, variant: 'machineGun' }));
+      this.addAttackEffect(effects, 'spark', target.pos, { color: '#fde68a', size: 20, maxLife: 0.14, variant: 'machineGun' });
     }
   }
 
@@ -210,5 +235,12 @@ export class TowerSystem {
     enemy.takeDamage(damage);
     spawnDamageText(damageTexts, enemy, damage, critical);
     playEnemyHit(enemy, damage, effects, critical, false);
+  }
+
+  private addAttackEffect(effects: Effect[], kind: EffectKind, pos: { x: number; y: number }, options: AttackEffectOptions, important = false): void {
+    const overBudget = effects.length >= MAX_ATTACK_EFFECTS;
+    if (overBudget && !important) return;
+    if (effects.length >= MAX_ATTACK_EFFECTS * 1.35 && SECONDARY_EFFECT_KINDS.has(kind)) return;
+    effects.push(makeEffect(kind, pos, options));
   }
 }

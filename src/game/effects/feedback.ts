@@ -5,6 +5,8 @@ import { effectsConfig } from '../config/effectsConfig';
 import { createExplosion, flashEntity, popText, shakeEntity } from './animation';
 import { makeEffect } from './effectPool';
 
+const MAX_MUZZLE_EFFECTS = 54;
+
 export function playEnemyHit(enemy: Enemy, damage: number, effects: Effect[], critical = false, showText = true): void {
   const isBoss = enemy.kind === 'boss';
   shakeEntity(enemy, {
@@ -34,6 +36,7 @@ export function playEnemyDeath(enemy: Enemy, effects: Effect[]): void {
 export function playTowerAttack(tower: Tower, targetX: number, targetY: number, effects: Effect[]): void {
   tower.muzzleTimer = effectsConfig.muzzleFlashDuration;
   tower.attackTarget = { x: targetX, y: targetY };
+  if (effects.length >= MAX_MUZZLE_EFFECTS) return;
   const colorByKind = {
     machineGun: '#facc15',
     coffee: '#f6b84a',

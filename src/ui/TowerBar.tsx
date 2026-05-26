@@ -11,11 +11,11 @@ const labels: Record<TowerKind, string> = {
 };
 
 const imageIcons: Record<TowerKind, string> = {
-  machineGun: assetManifest.towers.machineGunTapeLevel1,
-  frost: assetManifest.towers.fanSlowLevel1,
-  bomb: assetManifest.towers.microwaveTowerLevel1,
-  tesla: assetManifest.towers.wifiTowerLevel1,
-  coffee: assetManifest.towers.coffeeTowerLevel1,
+  machineGun: assetManifest.towers.machineGunTapeIcon,
+  frost: assetManifest.towers.fanSlowIcon,
+  bomb: assetManifest.towers.microwaveIcon,
+  tesla: assetManifest.towers.wifiIcon,
+  coffee: assetManifest.towers.coffeeTowerIcon,
 };
 
 type Props = {
@@ -41,11 +41,11 @@ export default function TowerBar({ coins, canBuild, selectedKind, onBuild }: Pro
             onClick={() => onBuild(kind)}
             style={{ ['--tower-color' as string]: cfg.color, ['--buy-progress' as string]: `${buyProgress}%` }}
           >
+            <strong>{labels[kind]}</strong>
             <span className="tower-icon">
               <img src={imageIcons[kind]} alt="" draggable={false} />
               {!affordable && <span className="buy-countdown" aria-hidden="true" />}
             </span>
-            <strong>{labels[kind]}</strong>
             <small><span>$</span>{cfg.price}</small>
           </button>
         );

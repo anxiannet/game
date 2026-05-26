@@ -399,7 +399,7 @@ button {
   position: absolute;
   left: 7px;
   right: 7px;
-  bottom: max(8px, env(safe-area-inset-bottom));
+  bottom: env(safe-area-inset-bottom);
   height: 92px;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -408,14 +408,21 @@ button {
 }
 
 .tower-button {
+  --icon-scale: 1;
+  --icon-x: 0px;
+  --icon-y: 0px;
   display: grid;
   place-items: center;
-  grid-template-rows: 42px 19px 17px;
-  gap: 2px;
-  padding: 7px 2px 6px;
+  grid-template-rows: 18px 1fr 22px;
+  gap: 0;
+  padding: 7px 2px 5px;
   background:
     linear-gradient(145deg, rgba(255,255,255,0.22), transparent 30%),
-    linear-gradient(180deg, var(--tower-color), #181818 82%);
+    linear-gradient(180deg, var(--tower-color), color-mix(in srgb, var(--tower-color) 28%, #181818) 88%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.52),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.28),
+    0 2px 8px rgba(0, 0, 0, 0.34);
   overflow: hidden;
 }
 
@@ -440,32 +447,24 @@ button {
   box-shadow:
     inset 0 2px 0 rgba(255, 255, 255, 0.62),
     inset 0 -4px 0 rgba(0, 0, 0, 0.34),
-    0 3px 0 #050505,
     0 0 16px color-mix(in srgb, var(--tower-color) 68%, transparent),
-    0 7px 16px rgba(0, 0, 0, 0.52);
-}
-
-.tower-button.can-buy .tower-icon {
-  box-shadow:
-    inset 0 2px 0 rgba(255,255,255,0.46),
-    0 0 0 2px var(--tower-color),
-    0 0 14px color-mix(in srgb, var(--tower-color) 72%, transparent),
-    0 4px 0 #050505;
+    0 3px 10px rgba(0, 0, 0, 0.36);
 }
 
 .tower-button.selected-build {
-  transform: translateY(-5px);
+  transform: translateY(-2px);
   box-shadow:
     inset 0 2px 0 rgba(255, 255, 255, 0.68),
     inset 0 -4px 0 rgba(0, 0, 0, 0.32),
-    0 5px 0 #050505,
     0 0 22px color-mix(in srgb, var(--tower-color) 82%, transparent),
-    0 11px 18px rgba(0, 0, 0, 0.58);
+    0 4px 12px rgba(0, 0, 0, 0.38);
 }
 
-.tower-button.selected-build .tower-icon {
-  outline: 3px solid #fff7ad;
-  outline-offset: 2px;
+.tower-button.selected-build .tower-icon img {
+  filter:
+    drop-shadow(0 2px 0 #050505)
+    drop-shadow(0 0 10px #fff7ad)
+    drop-shadow(0 0 16px var(--tower-color));
 }
 
 .tower-button.cant-buy .tower-icon img,
@@ -475,30 +474,26 @@ button {
 }
 
 .tower-icon {
-  position: relative;
-  width: 50px;
-  height: 42px;
+  position: absolute;
+  inset: 18px 2px 24px;
+  z-index: 0;
+  width: auto;
+  height: auto;
   display: grid;
   place-items: center;
   overflow: hidden;
-  border-radius: 8px;
-  background:
-    radial-gradient(circle at 40% 28%, rgba(255,248,216,0.4) 0 16%, transparent 17%),
-    linear-gradient(180deg, #343434, #111);
-  border: 3px solid #0a0a0a;
   color: var(--tower-color);
   font-size: 24px;
   font-weight: 1000;
   text-shadow: 2px 2px 0 #050505;
-  box-shadow: inset 0 2px 0 rgba(255,255,255,0.38), 0 0 0 2px var(--tower-color), 0 4px 0 #050505;
 }
 
 .buy-countdown {
   position: absolute;
-  width: 31px;
-  height: 31px;
-  right: 3px;
-  bottom: 3px;
+  width: 24px;
+  height: 24px;
+  right: 1px;
+  bottom: 1px;
   border-radius: 50%;
   background:
     radial-gradient(circle, #121212 0 48%, transparent 50%),
@@ -506,27 +501,61 @@ button {
   border: 2px solid #060606;
   box-shadow: 0 2px 0 #050505, 0 0 8px rgba(0, 0, 0, 0.68);
   pointer-events: none;
+  z-index: 2;
 }
 
 .buy-countdown::after {
   content: "";
   position: absolute;
-  inset: 9px;
+  inset: 7px;
   border-radius: 50%;
   background: var(--tower-color);
   box-shadow: 0 0 7px var(--tower-color);
 }
 
 .tower-icon img {
-  width: 54px;
-  height: 50px;
+  width: 56px;
+  height: 42px;
   object-fit: contain;
   pointer-events: none;
-  filter: drop-shadow(0 2px 0 #050505);
+  opacity: 0.95;
+  transform: translate(var(--icon-x), var(--icon-y)) scale(var(--icon-scale));
+  filter:
+    saturate(1.08)
+    contrast(1.04)
+    drop-shadow(0 3px 0 rgba(5, 5, 5, 0.78))
+    drop-shadow(0 0 9px color-mix(in srgb, var(--tower-color) 56%, transparent));
+}
+
+.tower-button-machineGun {
+  --icon-scale: 0.78;
+  --icon-y: 1px;
+}
+
+.tower-button-frost {
+  --icon-scale: 0.8;
+  --icon-y: 1px;
+}
+
+.tower-button-bomb {
+  --icon-scale: 0.78;
+  --icon-y: 0px;
+}
+
+.tower-button-tesla {
+  --icon-scale: 0.78;
+  --icon-y: 1px;
+}
+
+.tower-button-coffee {
+  --icon-scale: 0.8;
+  --icon-y: 1px;
 }
 
 .tower-button strong {
-  font-size: 14px;
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
   line-height: 1;
   color: #fff8e8;
   white-space: nowrap;
@@ -534,24 +563,31 @@ button {
 }
 
 .tower-button small {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  z-index: 1;
   color: #ffe675;
   font-weight: 1000;
   font-size: 13px;
   line-height: 1;
   white-space: nowrap;
+  text-align: center;
   text-shadow: 1px 1px 0 #050505, -1px -1px 0 #050505;
 }
 
 .tower-button small span {
   display: inline-grid;
   place-items: center;
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
   margin-right: 2px;
   border-radius: 50%;
   background: #f2aa14;
   border: 2px solid #341800;
   color: #5a2900;
+  font-size: 10px;
   text-shadow: none;
 }
 
@@ -1050,23 +1086,43 @@ button {
   }
 
   .tower-button {
-    grid-template-rows: 40px 17px 15px;
+    grid-template-rows: 15px 1fr 18px;
     padding-top: 6px;
   }
 
   .tower-icon {
-    width: 35px;
-    height: 35px;
+    inset: 17px 1px 21px;
     font-size: 20px;
-    border-width: 3px;
+  }
+
+  .tower-icon img {
+    width: 42px;
+    height: 32px;
+  }
+
+  .tower-button-machineGun {
+    --icon-scale: 0.78;
+    --icon-y: 1px;
+  }
+
+  .tower-button-frost {
+    --icon-scale: 0.8;
+    --icon-y: 1px;
   }
 
   .tower-button strong {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .tower-button small {
     font-size: 10px;
+    bottom: 4px;
+  }
+
+  .tower-button small span {
+    width: 12px;
+    height: 12px;
+    font-size: 9px;
   }
 }
 
