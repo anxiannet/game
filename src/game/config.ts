@@ -1,6 +1,6 @@
 export const DESIGN_WIDTH = 1080;
 export const DESIGN_HEIGHT = 1920;
-export const MAX_WAVES = 20;
+export const MAX_WAVES = 99;
 export const MAX_TOWER_LEVEL = 3;
 export const BASE_HP = 1;
 
@@ -130,7 +130,7 @@ export const towerConfigs = {
 
 export const enemyConfigs = {
   yellow: { name: '小黄怪', hp: 95, speed: 160, reward: 1, damage: 1, radius: 22, color: '#facc15' },
-  slacker: { name: '摸鱼怪', hp: 520, speed: 285, reward: 2, damage: 1, radius: 27, color: '#38bdf8' },
+  slacker: { name: '摸鱼怪', hp: 620, speed: 340, reward: 2, damage: 1, radius: 27, color: '#38bdf8' },
   overtime: { name: '加班怪', hp: 980, speed: 115, reward: 5, damage: 1, radius: 32, color: '#94a3b8' },
   requirement: { name: '需求怪', hp: 460, speed: 135, reward: 4, damage: 1, radius: 29, color: '#f472b6' },
   boss: { name: '老板 Boss', hp: 7200, speed: 85, reward: 25, damage: 1, radius: 52, color: '#f97316' },

@@ -3,10 +3,11 @@ import type { GameStats } from '../game/Game';
 
 type Props = {
   stats: GameStats;
+  onRetryCurrent: () => void;
   onRestart: () => void;
 };
 
-export default function ResultScreen({ stats, onRestart }: Props) {
+export default function ResultScreen({ stats, onRetryCurrent, onRestart }: Props) {
   const [shareStatus, setShareStatus] = useState('');
   const stressAge = stats.completedWaves;
   const report = getStressAgeReport(stressAge);
@@ -56,7 +57,8 @@ export default function ResultScreen({ stats, onRestart }: Props) {
         <h2>{won ? report.description : stats.lastFailReason ?? report.description}</h2>
         <div className="result-actions">
           <button className="metal-button yellow" onClick={handleShare}><span>{won ? '★' : '!'}</span>分享报告</button>
-          <button className="metal-button" onClick={onRestart}><span>▶</span>再顶一局</button>
+          {!won && <button className="metal-button" onClick={onRetryCurrent}><span>▶</span>重挑第{stats.challengeWave}波</button>}
+          <button className="metal-button" onClick={onRestart}><span>↺</span>从头开始</button>
         </div>
         {shareStatus && <div className="share-status">{shareStatus}</div>}
       </div>

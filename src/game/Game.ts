@@ -33,6 +33,7 @@ import {
 import { GameLoop } from './GameLoop';
 import { Input } from './Input';
 import { Renderer } from './Renderer';
+import { loadCurrentWave, resetCurrentWave, saveCurrentWave } from './progressStore';
 
 export type GamePhase = 'playing' | 'paused' | 'won' | 'lost';
 
@@ -62,6 +63,7 @@ export type GameStats = {
   title?: string;
   shield: number;
   completedWaves: number;
+  challengeWave: number;
   wavePreview: string;
   lastFailReason?: string;
 };
@@ -103,6 +105,7 @@ export class Game {
   private baseHp = BASE_HP;
   private shield = 0;
   private completedWaves = 0;
+  private challengeWave = 1;
   private kills = 0;
   private phase: GamePhase = 'playing';
   private speed = 1;
@@ -133,7 +136,7 @@ export class Game {
   }
 
   start(): void {
-    this.waves.startNextWave();
+    this.startChallenge(loadCurrentWave(), false);
     this.emitStats();
     this.loop.start();
   }
@@ -222,8 +225,19 @@ export class Game {
   }
 
   restart(): void {
-    this.economy = new EconomySystem();
+    resetCurrentWave();
+    this.startChallenge(1, false);
+  }
+
+  retryCurrentWave(): void {
+    this.startChallenge(this.challengeWave, false);
+  }
+
+  private startChallenge(wave: number, persist: boolean): void {
+    const challengeWave = Math.max(1, Math.min(MAX_WAVES, Math.floor(wave)));
     this.waves = new WaveSystem();
+    this.economy = new EconomySystem();
+    this.economy.coins = this.getStartingCoinsForWave(challengeWave);
     this.towers = [];
     this.enemies = [];
     this.projectiles = [];
@@ -236,7 +250,8 @@ export class Game {
     this.selectedBuildKind = undefined;
     this.baseHp = BASE_HP;
     this.shield = 0;
-    this.completedWaves = 0;
+    this.completedWaves = challengeWave - 1;
+    this.challengeWave = challengeWave;
     this.kills = 0;
     this.phase = 'playing';
     this.speed = 1;
@@ -250,8 +265,17 @@ export class Game {
     this.bossIntroWave = undefined;
     this.lastFailReason = undefined;
     this.shieldClearedWave = undefined;
-    this.waves.startNextWave();
+    if (persist) saveCurrentWave(challengeWave);
+    this.waves.startAtWave(challengeWave);
     this.emitStats();
+  }
+
+  private getStartingCoinsForWave(wave: number): number {
+    let coins = economyConfig.initialCoins;
+    for (let completedWave = 1; completedWave < wave; completedWave += 1) {
+      coins += this.waves.isBossWave(completedWave) ? economyConfig.bossClearReward : economyConfig.waveClearReward;
+    }
+    return coins;
   }
 
   private tick = (rawDt: number): void => {
@@ -382,6 +406,8 @@ export class Game {
     if (this.waves.active || this.enemies.length > 0 || this.waves.wave <= this.completedWaves) return;
 
     this.completedWaves = this.waves.wave;
+    this.challengeWave = Math.min(MAX_WAVES, this.completedWaves + 1);
+    saveCurrentWave(this.challengeWave);
     const bossCleared = this.waves.isBossWave(this.completedWaves);
     const reward = bossCleared ? economyConfig.bossClearReward : economyConfig.waveClearReward;
     this.economy.add(reward);
@@ -530,6 +556,7 @@ export class Game {
       speed: this.speed,
       shield: this.shield,
       completedWaves: this.completedWaves,
+      challengeWave: this.challengeWave,
       wavePreview: this.makeWavePreview(),
       lastFailReason: this.lastFailReason,
       towerLayout: this.towers.map((tower) => ({

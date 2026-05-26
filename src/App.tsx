@@ -15,6 +15,7 @@ const initialStats: GameStats = {
   speed: 1,
   shield: 0,
   completedWaves: 0,
+  challengeWave: 1,
   wavePreview: '',
   towerLayout: [],
 };
@@ -58,7 +59,11 @@ export default function App() {
           selectedKind={stats.selectedBuildKind}
           onBuild={(kind) => gameRef.current?.buildTower(kind)}
         />
-        <ResultScreen stats={stats} onRestart={() => gameRef.current?.restart()} />
+        <ResultScreen
+          stats={stats}
+          onRetryCurrent={() => gameRef.current?.retryCurrentWave()}
+          onRestart={() => gameRef.current?.restart()}
+        />
       </div>
     </main>
   );

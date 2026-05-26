@@ -85,9 +85,6 @@ export class Enemy {
       return;
     }
 
-    if (this.kind === 'slacker' && this.pauseTimer <= 0 && Math.random() < dt * 0.16) {
-      this.pauseTimer = 0.45;
-    }
     if (this.pauseTimer > 0) {
       this.pauseTimer -= dt;
       return;

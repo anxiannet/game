@@ -64,6 +64,11 @@ const pressureSequence: Array<[PressureType, PressureType]> = [
   ['bossMix', 'swarm'],
 ];
 
+function getPressurePair(wave: number): [PressureType, PressureType] {
+  if (wave <= 1) return ['tutorial', 'mixed'];
+  return pressureSequence[1 + ((wave - 2) % (pressureSequence.length - 1))];
+}
+
 function getPathLength(): number {
   let length = 0;
   for (let index = 0; index < pathPoints.length - 1; index += 1) {
@@ -109,104 +114,78 @@ const coverageProfile = makeCoverageProfile();
 
 function getPlan(primary: PressureType, secondary: PressureType, wave: number): Partial<Record<EnemyKind, number>> {
   const tier = Math.floor((wave - 1) / 5);
-  const pressureScale = 1 + tier * 0.16;
-  const fastCoverageSeconds = coverageProfile.exitCoverage / enemyConfigs.slacker.speed;
-  const swarmOverload = Math.ceil(coverageProfile.machineGunKillsPerSecondVsYellow * (1.75 + tier * 0.22));
+  const countScale = 1 + Math.min(tier, 14) * 0.045;
+  const compact = (base: number, cap: number) => Math.min(cap, Math.round(base * countScale));
 
-  if (wave === 2) return { slacker: 16, yellow: 4 };
-  if (wave === 3) return { overtime: 8, requirement: 3 };
-  if (wave === 4) return { yellow: 160, slacker: 10 };
-  if (wave === 5) return { boss: 1, yellow: 180, slacker: 16, overtime: 4, requirement: 5 };
-  if (wave === 6) return { slacker: 92, yellow: 36 };
-  if (wave === 7) return { overtime: 12, requirement: 12, yellow: 28 };
-  if (wave === 8) return { requirement: 34, slacker: 24, yellow: 36 };
-  if (wave === 9) return { slacker: 120, overtime: 8 };
-  if (wave === 10) return { boss: 1, yellow: 220, slacker: 28, overtime: 8, requirement: 10 };
+  if (wave === 2) return { slacker: 18, yellow: 2 };
 
   switch (primary) {
     case 'tutorial':
       return { yellow: 7 };
     case 'highSpeed':
       return {
-        slacker: Math.round((10 + fastCoverageSeconds * 2.4 + tier * 3) * pressureScale),
-        yellow: Math.round(6 + tier * 3),
+        slacker: compact(18, 34),
+        yellow: compact(4, 10),
       };
     case 'tank':
       return {
-        overtime: Math.round(4 + tier * 1.6),
-        requirement: Math.round(3 + tier * 1.2),
-        yellow: Math.round(secondary === 'swarm' ? 10 + tier * 3 : 4 + tier),
+        overtime: compact(8, 20),
+        requirement: compact(3, 10),
+        yellow: secondary === 'swarm' ? compact(8, 18) : compact(3, 8),
       };
     case 'swarm':
       return {
-        yellow: Math.round(swarmOverload * (3.6 + tier * 0.35)),
-        slacker: Math.round(secondary === 'highSpeed' ? 8 + tier * 2 : 3 + tier),
+        yellow: compact(26, 44),
+        slacker: secondary === 'highSpeed' ? compact(10, 18) : compact(5, 12),
       };
     case 'chainPack':
       return {
-        requirement: Math.round(8 + tier * 2),
-        yellow: Math.round(10 + tier * 3),
-        slacker: Math.round(secondary === 'highSpeed' ? 8 + tier * 2 : 4 + tier),
+        requirement: compact(14, 30),
+        yellow: compact(8, 16),
+        slacker: secondary === 'highSpeed' ? compact(10, 20) : compact(5, 12),
       };
     case 'mixed':
       return {
-        yellow: Math.round(12 + tier * 4),
-        slacker: Math.round(7 + tier * 2),
-        overtime: Math.round(3 + tier),
-        requirement: Math.round(4 + tier),
+        yellow: compact(10, 20),
+        slacker: compact(8, 16),
+        overtime: compact(4, 10),
+        requirement: compact(5, 12),
       };
     case 'bossMix':
       return {
         boss: 1,
-        yellow: Math.round(18 + tier * 5),
-        slacker: Math.round(8 + tier * 2),
-        overtime: Math.round(2 + tier),
-        requirement: Math.round(3 + tier),
+        yellow: compact(18, 32),
+        slacker: compact(10, 20),
+        overtime: compact(4, 10),
+        requirement: compact(5, 12),
       };
   }
 }
 
 function getSpawnInterval(primary: PressureType, wave: number): number {
-  if (wave === 2) return 0.16;
-  if (wave === 3) return 0.58;
-  if (wave === 4) return 0.04;
-  if (wave === 5) return 0.05;
-  if (wave === 6) return 0.055;
-  if (wave === 7) return 0.24;
-  if (wave === 8) return 0.09;
-  if (wave === 9) return 0.055;
-  if (wave === 10) return 0.045;
+  if (wave === 2) return 0.14;
 
   const tier = Math.floor((wave - 1) / 5);
-  const averageCoverageSeconds = coverageProfile.averageCoverage / enemyConfigs.yellow.speed;
   const base = {
     tutorial: 0.72,
-    highSpeed: 0.18,
-    tank: 0.58,
-    swarm: 0.09,
-    chainPack: 0.22,
-    mixed: 0.28,
-    bossMix: 0.18,
+    highSpeed: 0.14,
+    tank: 0.48,
+    swarm: 0.075,
+    chainPack: 0.12,
+    mixed: 0.18,
+    bossMix: 0.09,
   }[primary];
-  const coverageAdjustment = Math.max(0.78, Math.min(1.12, averageCoverageSeconds / 5.05));
-  return Math.max(0.045, +(base * coverageAdjustment - tier * 0.012).toFixed(3));
+  return Math.max(0.035, +(base - Math.min(tier, 14) * 0.004).toFixed(3));
 }
 
 function getBurst(primary: PressureType, wave: number): Pick<WavePressure, 'burstEvery' | 'burstSize'> {
   if (wave === 2) return { burstEvery: 4, burstSize: 3 };
-  if (wave === 4) return { burstEvery: 5, burstSize: 4 };
-  if (wave === 5) return { burstEvery: 6, burstSize: 4 };
-  if (wave === 6) return { burstEvery: 5, burstSize: 3 };
-  if (wave === 7) return { burstEvery: 7, burstSize: 2 };
-  if (wave === 8) return { burstEvery: 5, burstSize: 3 };
-  if (wave === 9) return { burstEvery: 4, burstSize: 3 };
-  if (wave === 10) return { burstEvery: 5, burstSize: 4 };
 
   const tier = Math.floor((wave - 1) / 5);
-  if (primary === 'swarm') return { burstEvery: Math.max(5, 7 - tier), burstSize: 3 + Math.min(tier, 2) };
-  if (primary === 'highSpeed') return { burstEvery: 6, burstSize: 2 + Math.min(tier, 2) };
-  if (primary === 'bossMix') return { burstEvery: 8, burstSize: 3 };
-  if (primary === 'chainPack') return { burstEvery: 7, burstSize: 2 };
+  if (primary === 'swarm') return { burstEvery: Math.max(4, 7 - Math.min(tier, 3)), burstSize: 4 };
+  if (primary === 'highSpeed') return { burstEvery: 4, burstSize: 3 };
+  if (primary === 'bossMix') return { burstEvery: 5, burstSize: 4 };
+  if (primary === 'chainPack') return { burstEvery: 5, burstSize: 3 };
   return { burstEvery: 0, burstSize: 1 };
 }
 
@@ -240,7 +219,7 @@ function getExpectedConcurrentEnemies(plan: Partial<Record<EnemyKind, number>>, 
 }
 
 function makeWavePlan(wave: number): WavePressure {
-  const [primary, secondary] = pressureSequence[Math.max(0, Math.min(wave - 1, pressureSequence.length - 1))];
+  const [primary, secondary] = getPressurePair(wave);
   const plan = getPlan(primary, secondary, wave);
   const spawnInterval = getSpawnInterval(primary, wave);
   return {
@@ -274,6 +253,12 @@ export class WaveSystem {
     this.active = true;
     this.spawnQueue = this.makeWave(this.wave);
     this.spawnTimer = 0.1;
+  }
+
+  startAtWave(wave: number): void {
+    this.wave = Math.max(0, Math.min(MAX_WAVES - 1, Math.floor(wave) - 1));
+    this.completed = false;
+    this.startNextWave();
   }
 
   update(dt: number): Enemy[] {
