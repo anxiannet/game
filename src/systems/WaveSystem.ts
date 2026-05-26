@@ -113,10 +113,15 @@ function getPlan(primary: PressureType, secondary: PressureType, wave: number): 
   const fastCoverageSeconds = coverageProfile.exitCoverage / enemyConfigs.slacker.speed;
   const swarmOverload = Math.ceil(coverageProfile.machineGunKillsPerSecondVsYellow * (1.75 + tier * 0.22));
 
-  if (wave === 2) return { slacker: 18, yellow: 6 };
-  if (wave === 3) return { overtime: 5, requirement: 4, yellow: 6 };
-  if (wave === 4) return { yellow: 38, slacker: 6 };
-  if (wave === 5) return { boss: 1, yellow: 24, slacker: 10, overtime: 3, requirement: 4 };
+  if (wave === 2) return { yellow: 120, slacker: 8 };
+  if (wave === 3) return { overtime: 8, requirement: 3 };
+  if (wave === 4) return { yellow: 160, slacker: 10 };
+  if (wave === 5) return { boss: 1, yellow: 180, slacker: 16, overtime: 4, requirement: 5 };
+  if (wave === 6) return { slacker: 92, yellow: 36 };
+  if (wave === 7) return { overtime: 12, requirement: 12, yellow: 28 };
+  if (wave === 8) return { requirement: 34, slacker: 24, yellow: 36 };
+  if (wave === 9) return { slacker: 120, overtime: 8 };
+  if (wave === 10) return { boss: 1, yellow: 220, slacker: 28, overtime: 8, requirement: 10 };
 
   switch (primary) {
     case 'tutorial':
@@ -162,10 +167,15 @@ function getPlan(primary: PressureType, secondary: PressureType, wave: number): 
 }
 
 function getSpawnInterval(primary: PressureType, wave: number): number {
-  if (wave === 2) return 0.2;
-  if (wave === 3) return 0.46;
-  if (wave === 4) return 0.075;
-  if (wave === 5) return 0.15;
+  if (wave === 2) return 0.055;
+  if (wave === 3) return 0.58;
+  if (wave === 4) return 0.04;
+  if (wave === 5) return 0.05;
+  if (wave === 6) return 0.055;
+  if (wave === 7) return 0.24;
+  if (wave === 8) return 0.09;
+  if (wave === 9) return 0.055;
+  if (wave === 10) return 0.045;
 
   const tier = Math.floor((wave - 1) / 5);
   const averageCoverageSeconds = coverageProfile.averageCoverage / enemyConfigs.yellow.speed;
@@ -183,9 +193,14 @@ function getSpawnInterval(primary: PressureType, wave: number): number {
 }
 
 function getBurst(primary: PressureType, wave: number): Pick<WavePressure, 'burstEvery' | 'burstSize'> {
-  if (wave === 2) return { burstEvery: 0, burstSize: 1 };
+  if (wave === 2) return { burstEvery: 5, burstSize: 4 };
   if (wave === 4) return { burstEvery: 5, burstSize: 4 };
-  if (wave === 5) return { burstEvery: 7, burstSize: 3 };
+  if (wave === 5) return { burstEvery: 6, burstSize: 4 };
+  if (wave === 6) return { burstEvery: 5, burstSize: 3 };
+  if (wave === 7) return { burstEvery: 7, burstSize: 2 };
+  if (wave === 8) return { burstEvery: 5, burstSize: 3 };
+  if (wave === 9) return { burstEvery: 4, burstSize: 3 };
+  if (wave === 10) return { burstEvery: 5, burstSize: 4 };
 
   const tier = Math.floor((wave - 1) / 5);
   if (primary === 'swarm') return { burstEvery: Math.max(5, 7 - tier), burstSize: 3 + Math.min(tier, 2) };
