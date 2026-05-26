@@ -113,7 +113,7 @@ export const buildSpots: Vec2[] = [
 ];
 
 export const towerConfigs = {
-  machineGun: { name: '胶带塔', price: 100, range: 245, damage: 11, fireRate: 0.18, color: '#f59e0b' },
+  machineGun: { name: '胶带塔', price: 100, range: 245, damage: 100, fireRate: 0.2, color: '#f59e0b' },
   coffee: { name: '咖啡塔', price: 175, range: 255, damage: 0, fireRate: 1.5, color: '#f6b84a' },
   frost: { name: '风扇塔', price: 125, range: 235, damage: 9, fireRate: 0.9, color: '#38d5ff' },
   bomb: { name: '微波塔', price: 160, range: 260, damage: 38, fireRate: 1.2, color: '#fb923c' },
