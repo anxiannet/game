@@ -113,7 +113,7 @@ function getPlan(primary: PressureType, secondary: PressureType, wave: number): 
   const fastCoverageSeconds = coverageProfile.exitCoverage / enemyConfigs.slacker.speed;
   const swarmOverload = Math.ceil(coverageProfile.machineGunKillsPerSecondVsYellow * (1.75 + tier * 0.22));
 
-  if (wave === 2) return { yellow: 120, slacker: 8 };
+  if (wave === 2) return { slacker: 16, yellow: 4 };
   if (wave === 3) return { overtime: 8, requirement: 3 };
   if (wave === 4) return { yellow: 160, slacker: 10 };
   if (wave === 5) return { boss: 1, yellow: 180, slacker: 16, overtime: 4, requirement: 5 };
@@ -167,7 +167,7 @@ function getPlan(primary: PressureType, secondary: PressureType, wave: number): 
 }
 
 function getSpawnInterval(primary: PressureType, wave: number): number {
-  if (wave === 2) return 0.055;
+  if (wave === 2) return 0.16;
   if (wave === 3) return 0.58;
   if (wave === 4) return 0.04;
   if (wave === 5) return 0.05;
@@ -193,7 +193,7 @@ function getSpawnInterval(primary: PressureType, wave: number): number {
 }
 
 function getBurst(primary: PressureType, wave: number): Pick<WavePressure, 'burstEvery' | 'burstSize'> {
-  if (wave === 2) return { burstEvery: 5, burstSize: 4 };
+  if (wave === 2) return { burstEvery: 4, burstSize: 3 };
   if (wave === 4) return { burstEvery: 5, burstSize: 4 };
   if (wave === 5) return { burstEvery: 6, burstSize: 4 };
   if (wave === 6) return { burstEvery: 5, burstSize: 3 };

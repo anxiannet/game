@@ -100,16 +100,17 @@ export const pathPoints: Vec2[] = [
 ];
 
 export const buildSpots: Vec2[] = [
-  { x: 600, y: 520 },
-  { x: 360, y: 740 },
-  { x: 771, y: 960 },
-  { x: 406, y: 1180 },
+  // Ordered by the first path distance where enemies enter each spot's attack coverage.
   { x: 363, y: 520 },
+  { x: 600, y: 520 },
   { x: 600, y: 733 },
-  { x: 368, y: 948 },
-  { x: 639, y: 1178 },
   { x: 876, y: 736 },
+  { x: 360, y: 740 },
+  { x: 368, y: 948 },
+  { x: 771, y: 960 },
   { x: 895, y: 1178 },
+  { x: 639, y: 1178 },
+  { x: 406, y: 1180 },
 ];
 
 export const towerConfigs = {
@@ -129,7 +130,7 @@ export const towerConfigs = {
 
 export const enemyConfigs = {
   yellow: { name: '小黄怪', hp: 95, speed: 160, reward: 1, damage: 1, radius: 22, color: '#facc15' },
-  slacker: { name: '摸鱼怪', hp: 220, speed: 220, reward: 2, damage: 1, radius: 27, color: '#38bdf8' },
+  slacker: { name: '摸鱼怪', hp: 520, speed: 285, reward: 2, damage: 1, radius: 27, color: '#38bdf8' },
   overtime: { name: '加班怪', hp: 980, speed: 115, reward: 5, damage: 1, radius: 32, color: '#94a3b8' },
   requirement: { name: '需求怪', hp: 460, speed: 135, reward: 4, damage: 1, radius: 29, color: '#f472b6' },
   boss: { name: '老板 Boss', hp: 7200, speed: 85, reward: 25, damage: 1, radius: 52, color: '#f97316' },

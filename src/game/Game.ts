@@ -320,7 +320,6 @@ export class Game {
       if (enemy.dead && !enemy.rewardClaimed) {
         enemy.rewardClaimed = true;
         this.kills += 1;
-        this.economy.add(enemy.reward);
         if (!enemy.smokeSpawned) {
           enemy.smokeSpawned = true;
           spawnSmokeParticles(this.particles, enemy);

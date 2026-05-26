@@ -116,6 +116,7 @@ export class Renderer {
     if (!this.mapReady) this.drawPath();
     this.drawBuildSpots(snapshot);
     snapshot.towers.forEach((tower) => this.drawTower(tower, time));
+    this.drawBuildSpotLabels();
     snapshot.enemies.forEach((enemy) => this.drawEnemy(ctx, enemy, time));
     snapshot.projectiles.forEach((projectile) => this.drawProjectile(projectile));
     snapshot.hitEffects.forEach((effect) => this.drawHitEffect(effect));
@@ -241,6 +242,34 @@ export class Renderer {
         ctx.fillRect(-21, -5, 42, 10);
         ctx.fillRect(-5, -21, 10, 42);
       }
+      ctx.restore();
+    });
+  }
+
+  private drawBuildSpotLabels(): void {
+    const { ctx } = this;
+    buildSpots.forEach((spot, index) => {
+      const label = String(index + 1);
+      ctx.save();
+      ctx.translate(spot.x - 42, spot.y - 54);
+      ctx.shadowColor = 'rgba(0,0,0,0.65)';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = 'rgba(15,23,42,0.92)';
+      ctx.strokeStyle = 'rgba(251,191,36,0.95)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(0, 0, 24, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#fef3c7';
+      ctx.strokeStyle = '#020617';
+      ctx.lineWidth = 5;
+      ctx.font = '900 24px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeText(label, 0, 1);
+      ctx.fillText(label, 0, 1);
       ctx.restore();
     });
   }
