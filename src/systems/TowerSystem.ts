@@ -7,6 +7,7 @@ import { towerConfigs } from '../game/config';
 import { makeEffect } from '../game/effects/effectPool';
 import { playBombExplosion, playEnemyHit, playTowerAttack } from '../game/effects/feedback';
 import { spawnDamageText, type DamageText } from '../game/effects/proceduralEffects';
+import { audioManager } from '../lib/audioManager';
 import { distance, inRange } from './CollisionSystem';
 
 type AttackEffectOptions = {
@@ -22,6 +23,8 @@ const MAX_HIT_EFFECTS = 34;
 const SECONDARY_EFFECT_KINDS = new Set<EffectKind>(['spark', 'frostRing', 'steam', 'electricArc']);
 
 export class TowerSystem {
+  private gatlingLoopActive = false;
+
   update(dt: number, towers: Tower[], enemies: Enemy[], projectiles: Projectile[], effects: Effect[], damageTexts: DamageText[], hitEffects: HitEffect[]): void {
     this.updateTowers(dt, towers, enemies, projectiles, effects, damageTexts);
     this.updateBullets(dt, projectiles, enemies, hitEffects);
@@ -29,6 +32,7 @@ export class TowerSystem {
   }
 
   updateTowers(dt: number, towers: Tower[], enemies: Enemy[], projectiles: Projectile[], effects: Effect[], damageTexts: DamageText[]): void {
+    let gatlingHasTarget = false;
     for (const tower of towers) {
       tower.updateAnimation(dt);
 
@@ -45,6 +49,7 @@ export class TowerSystem {
         continue;
       }
 
+      if (tower.kind === 'machineGun') gatlingHasTarget = true;
       tower.target = target;
       tower.aimAt(target.pos);
       tower.attackTarget = { ...target.pos };
@@ -58,6 +63,7 @@ export class TowerSystem {
       playTowerAttack(tower, target.pos.x, target.pos.y, effects);
       this.fireBullet(tower, target, enemies, projectiles, effects, damageTexts);
     }
+    this.updateGatlingLoop(gatlingHasTarget);
   }
 
   updateBullets(dt: number, projectiles: Projectile[], enemies: Enemy[], hitEffects: HitEffect[]): void {
@@ -235,6 +241,18 @@ export class TowerSystem {
     enemy.takeDamage(damage);
     spawnDamageText(damageTexts, enemy, damage, critical);
     playEnemyHit(enemy, damage, effects, critical, false);
+  }
+
+  private updateGatlingLoop(active: boolean): void {
+    if (active === this.gatlingLoopActive) return;
+    this.gatlingLoopActive = active;
+    if (active) {
+      audioManager.play('gatling_start');
+      audioManager.loop('gatling_loop');
+      return;
+    }
+    audioManager.stop('gatling_loop');
+    audioManager.play('gatling_end');
   }
 
   private addAttackEffect(effects: Effect[], kind: EffectKind, pos: { x: number; y: number }, options: AttackEffectOptions, important = false): void {

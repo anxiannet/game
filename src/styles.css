@@ -1044,6 +1044,311 @@ button {
   font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+.audio-tool-shell {
+  width: 100vw;
+  height: 100svh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 10px;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(250, 204, 21, 0.08), transparent 36%),
+    #07080b;
+  color: #f8fafc;
+}
+
+.audio-tool-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 2px solid rgba(250, 204, 21, 0.44);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.94);
+}
+
+.audio-tool-header p {
+  margin: 0 0 3px;
+  color: #facc15;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.audio-tool-header h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.audio-tool-stats {
+  min-width: 82px;
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.audio-tool-stats strong {
+  color: #facc15;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.audio-tool-stats span {
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.audio-tool-controls {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.82);
+}
+
+.audio-tool-controls input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(250, 204, 21, 0.36);
+  border-radius: 8px;
+  outline: none;
+  background: #020617;
+  color: #f8fafc;
+  font: 900 14px/1 ui-sans-serif, system-ui, sans-serif;
+}
+
+.audio-tool-tabs,
+.audio-tool-mode {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 1px;
+}
+
+.audio-tool-tabs button,
+.audio-tool-mode button,
+.audio-play-button {
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.36);
+  background: #1f2937;
+  color: #e5e7eb;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.audio-tool-tabs button,
+.audio-tool-mode button {
+  padding: 0 12px;
+}
+
+.audio-tool-tabs button.active,
+.audio-tool-mode button.active,
+.audio-play-button {
+  background: #f59e0b;
+  color: #111827;
+  border-color: #facc15;
+}
+
+.audio-tool-mode button:disabled {
+  opacity: 0.42;
+}
+
+.audio-upload-button {
+  height: 34px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 0 12px;
+  border: 1px solid #facc15;
+  border-radius: 8px;
+  background: #f59e0b;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.audio-upload-button input {
+  display: none;
+}
+
+.audio-upload-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.audio-upload-status strong {
+  width: 26px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  background: #facc15;
+  color: #111827;
+  font-size: 12px;
+}
+
+.audio-upload-status span {
+  min-width: 0;
+  overflow: hidden;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-tool-list {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding-right: 2px;
+}
+
+.audio-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.92);
+}
+
+.audio-row.looping {
+  border-color: rgba(250, 204, 21, 0.72);
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.2);
+}
+
+.audio-row.uploaded {
+  background:
+    linear-gradient(90deg, rgba(34, 197, 94, 0.16), transparent 38%),
+    rgba(15, 23, 42, 0.92);
+  border-color: rgba(34, 197, 94, 0.48);
+}
+
+.audio-play-button {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+}
+
+.audio-row-main {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.audio-row-main strong {
+  color: #f8fafc;
+  font-size: 14px;
+  line-height: 1.1;
+}
+
+.audio-row-main span {
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.audio-row-main code {
+  min-width: 0;
+  overflow: hidden;
+  color: #93c5fd;
+  font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-prompt {
+  margin: 5px 0 0;
+  padding: 8px;
+  border: 1px solid rgba(250, 204, 21, 0.26);
+  border-radius: 6px;
+  background: rgba(2, 6, 23, 0.72);
+  color: #fde68a;
+  font: 12px/1.38 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.audio-uploaded-file {
+  min-width: 0;
+  overflow: hidden;
+  color: #bbf7d0;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-target-file {
+  min-width: 0;
+  overflow: hidden;
+  color: #fcd34d;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-row-meta {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.audio-row-meta span {
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: #111827;
+  color: #fde68a;
+  font-size: 10px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.audio-row-meta span.ready {
+  background: #14532d;
+  color: #bbf7d0;
+}
+
+.audio-row-meta span.placeholder {
+  background: #3f1d1d;
+  color: #fecaca;
+}
+
+.audio-row-meta button {
+  width: 58px;
+  height: 25px;
+  border-radius: 6px;
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  background: #374151;
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.audio-row-meta button:disabled {
+  opacity: 0.35;
+}
+
 @keyframes hudShake {
   0%, 100% { transform: translateX(0); }
   50% { transform: translateX(2px); }
@@ -1249,5 +1554,34 @@ button {
   .path-tool-panel textarea {
     min-height: 86px;
     font-size: 11px;
+  }
+
+  .audio-tool-shell {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .audio-tool-header h1 {
+    font-size: 22px;
+  }
+
+  .audio-tool-stats strong {
+    font-size: 22px;
+  }
+
+  .audio-row {
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .audio-play-button {
+    width: 38px;
+    height: 38px;
+  }
+
+  .audio-row-meta {
+    grid-column: 2;
+    display: flex;
+    justify-content: flex-start;
   }
 }

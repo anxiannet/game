@@ -3,6 +3,7 @@ import { Effect } from '../entities/Effect';
 import { HitEffect } from '../entities/HitEffect';
 import { Projectile } from '../entities/Projectile';
 import { Tower } from '../entities/Tower';
+import { audioManager } from '../lib/audioManager';
 import { EconomySystem } from '../systems/EconomySystem';
 import { TowerSystem } from '../systems/TowerSystem';
 import { WaveSystem } from '../systems/WaveSystem';
@@ -143,6 +144,7 @@ export class Game {
 
   destroy(): void {
     this.loop.stop();
+    audioManager.stopAllLoops();
     this.input.destroy();
     window.removeEventListener('resize', this.resizeHandler);
     window.removeEventListener('keydown', this.keyHandler);
@@ -157,6 +159,7 @@ export class Game {
     if (this.phase !== 'playing') return;
     if (this.selectedSpot === undefined) {
       if (this.economy.coins < towerConfigs[kind].price) {
+        audioManager.play('ui_error');
         this.bumpShake(10);
         return;
       }
@@ -169,13 +172,18 @@ export class Game {
   }
 
   private deployTower(kind: TowerKind, spotIndex: number): boolean {
-    if (this.towers.some((tower) => tower.pos.x === buildSpots[spotIndex].x && tower.pos.y === buildSpots[spotIndex].y)) return false;
+    if (this.towers.some((tower) => tower.pos.x === buildSpots[spotIndex].x && tower.pos.y === buildSpots[spotIndex].y)) {
+      audioManager.play('ui_error');
+      return false;
+    }
     const cost = towerConfigs[kind].price;
     if (!this.economy.spend(cost)) {
+      audioManager.play('ui_error');
       this.bumpShake(10);
       return false;
     }
     this.towers.push(new Tower(this.towerId++, kind, buildSpots[spotIndex]));
+    audioManager.play('ui_confirm');
     this.effects.push(makeEffect('coin', buildSpots[spotIndex], { text: `-${cost}`, color: '#f97316' }));
     this.selectedSpot = undefined;
     this.selectedBuildKind = undefined;
@@ -192,10 +200,12 @@ export class Game {
   private upgradeTower(tower: Tower): boolean {
     if (tower.level >= MAX_TOWER_LEVEL) return false;
     if (!this.economy.spend(tower.upgradeCost)) {
+      audioManager.play('ui_error');
       this.bumpShake(10);
       return false;
     }
     tower.level += 1;
+    audioManager.play('ui_upgrade');
     this.effects.push(makeEffect('coin', tower.pos, { text: `Lv.${tower.level}`, color: '#fbbf24' }));
     this.selectedTower = tower.id;
     this.selectedSpot = undefined;
@@ -208,6 +218,7 @@ export class Game {
     if (index < 0) return;
     const [tower] = this.towers.splice(index, 1);
     this.economy.add(tower.sellValue);
+    audioManager.playRandom(['coin_pickup_01', 'coin_pickup_02', 'coin_pickup_03']);
     this.effects.push(makeEffect('coin', tower.pos, { text: `+${tower.sellValue}`, color: '#facc15' }));
     this.selectedTower = undefined;
     this.emitStats();
@@ -234,6 +245,8 @@ export class Game {
   }
 
   private startChallenge(wave: number, persist: boolean): void {
+    audioManager.stop('bgm_boss');
+    audioManager.loop('bgm_normal');
     const challengeWave = Math.max(1, Math.min(MAX_WAVES, Math.floor(wave)));
     this.waves = new WaveSystem();
     this.economy = new EconomySystem();
@@ -349,6 +362,7 @@ export class Game {
           spawnSmokeParticles(this.particles, enemy);
         }
         playEnemyDeath(enemy, this.effects);
+        audioManager.playRandom(['coin_pickup_01', 'coin_pickup_02', 'coin_pickup_03']);
         if (enemy.kind === 'requirement') {
           spawned.push(new Enemy(this.waves.nextEnemyId++, 'yellow', this.waves.wave, 0));
           spawned.push(new Enemy(this.waves.nextEnemyId++, 'yellow', this.waves.wave, 18));
@@ -360,6 +374,10 @@ export class Game {
         if (enemy.kind === 'boss' || enemy.radius > 30) {
           this.effects.push(createExplosion(enemy.pos.x, enemy.pos.y, { radius: enemy.kind === 'boss' ? 170 : 95, color: '#f97316', shake: true }));
           this.screenShake.screenShake({ duration: 0.18, intensity: enemy.kind === 'boss' ? 30 : 14 });
+          if (enemy.kind === 'boss') {
+            audioManager.stop('bgm_boss');
+            audioManager.loop('bgm_normal');
+          }
         }
       }
 
@@ -411,6 +429,7 @@ export class Game {
     const bossCleared = this.waves.isBossWave(this.completedWaves);
     const reward = bossCleared ? economyConfig.bossClearReward : economyConfig.waveClearReward;
     this.economy.add(reward);
+    audioManager.play(bossCleared ? 'mission_complete' : 'reward_claim');
     this.effects.push(popText(`预算 +${reward}`, 540, 460, { type: 'coin', color: '#fde68a', size: 42 }));
 
     if (bossCleared && shieldConfig.gainAfterBossWave && this.shieldClearedWave !== this.completedWaves) {
@@ -422,6 +441,10 @@ export class Game {
   private endGame(phase: 'won' | 'lost'): void {
     if (this.phase === 'won' || this.phase === 'lost') return;
     this.phase = phase;
+    audioManager.stop('gatling_loop');
+    audioManager.stop('bgm_normal');
+    audioManager.stop('bgm_boss');
+    audioManager.play(phase === 'won' ? 'victory' : 'defeat');
     this.selectedSpot = undefined;
     this.selectedTower = undefined;
     this.emitStats();
@@ -471,6 +494,9 @@ export class Game {
 
   private playBossIntro(nextWave: number): void {
     if (this.bossIntroWave === nextWave) return;
+    audioManager.play('boss_spawn');
+    audioManager.stop('bgm_normal');
+    audioManager.loop('bgm_boss');
     this.bossIntroWave = nextWave;
     this.bossIntroTotal = effectsConfig.bossIntroDuration;
     this.bossIntro = this.bossIntroTotal;

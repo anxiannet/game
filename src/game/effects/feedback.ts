@@ -1,14 +1,25 @@
 import { Enemy } from '../../entities/Enemy';
 import { Effect } from '../../entities/Effect';
 import { Tower } from '../../entities/Tower';
+import { audioManager } from '../../lib/audioManager';
 import { effectsConfig } from '../config/effectsConfig';
 import { createExplosion, flashEntity, popText, shakeEntity } from './animation';
 import { makeEffect } from './effectPool';
 
 const MAX_MUZZLE_EFFECTS = 54;
+const audioCooldowns = new Map<string, number>();
+
+function playThrottled(soundId: string, cooldownMs: number): void {
+  const now = performance.now();
+  const last = audioCooldowns.get(soundId) ?? 0;
+  if (now - last < cooldownMs) return;
+  audioCooldowns.set(soundId, now);
+  audioManager.play(soundId);
+}
 
 export function playEnemyHit(enemy: Enemy, damage: number, effects: Effect[], critical = false, showText = true): void {
   const isBoss = enemy.kind === 'boss';
+  playThrottled(critical ? 'critical_hit' : damage > 35 ? 'hit_medium' : 'hit_light', 55);
   shakeEntity(enemy, {
     duration: isBoss ? 0.22 : effectsConfig.enemyHitShakeDuration,
     intensity: isBoss ? effectsConfig.bossHitShakeIntensity : effectsConfig.enemyHitShakeIntensity,
@@ -26,6 +37,7 @@ export function playEnemyHit(enemy: Enemy, damage: number, effects: Effect[], cr
 }
 
 export function playEnemyDeath(enemy: Enemy, effects: Effect[]): void {
+  audioManager.play(enemy.kind === 'boss' ? 'boss_die' : 'enemy_die');
   effects.push(popText(`+${enemy.reward}`, enemy.pos.x, enemy.pos.y - enemy.radius * 1.5, {
     type: 'coin',
     color: '#facc15',
@@ -34,6 +46,9 @@ export function playEnemyDeath(enemy: Enemy, effects: Effect[]): void {
 }
 
 export function playTowerAttack(tower: Tower, targetX: number, targetY: number, effects: Effect[]): void {
+  if (tower.kind === 'machineGun') playThrottled('shell_drop', 140);
+  if (tower.kind === 'tesla') playThrottled('wifi_shock', 120);
+  if (tower.kind === 'frost') playThrottled('fan_slow', 180);
   tower.muzzleTimer = effectsConfig.muzzleFlashDuration;
   tower.attackTarget = { x: targetX, y: targetY };
   if (effects.length >= MAX_MUZZLE_EFFECTS) return;
@@ -48,5 +63,6 @@ export function playTowerAttack(tower: Tower, targetX: number, targetY: number, 
 }
 
 export function playBombExplosion(x: number, y: number, effects: Effect[]): void {
+  audioManager.play('bomb_explode');
   effects.push(createExplosion(x, y, { radius: 112, color: '#fb923c', shake: true }));
 }

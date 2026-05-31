@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { BASE_HP, economyConfig } from './game/config';
 import { Game, GameStats } from './game/Game';
+import { audioManager } from './lib/audioManager';
+import AudioManagerPage from './ui/AudioManagerPage';
 import GameHUD from './ui/GameHUD';
 import PathPointTool from './ui/PathPointTool';
 import ResultScreen from './ui/ResultScreen';
@@ -23,13 +25,15 @@ const initialStats: GameStats = {
 export default function App() {
   const tool = new URLSearchParams(window.location.search).get('tool');
   const isPathTool = tool === 'path' || tool === 'build';
+  const isAudioTool = tool === 'audio';
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gameRef = useRef<Game | null>(null);
   const [stats, setStats] = useState<GameStats>(initialStats);
 
   useEffect(() => {
-    if (isPathTool) return;
+    if (isPathTool || isAudioTool) return;
     if (!canvasRef.current) return;
+    void audioManager.preload();
     const game = new Game(canvasRef.current);
     gameRef.current = game;
     game.onStats(setStats);
@@ -38,9 +42,12 @@ export default function App() {
       game.destroy();
       gameRef.current = null;
     };
-  }, [isPathTool]);
+  }, [isPathTool, isAudioTool]);
 
   if (isPathTool) return <PathPointTool mode={tool === 'build' ? 'build' : 'path'} />;
+  if (isAudioTool) return <AudioManagerPage />;
+
+  const playClick = () => audioManager.play('ui_click');
 
   return (
     <main className="app-shell">
@@ -48,21 +55,42 @@ export default function App() {
         <canvas ref={canvasRef} className="game-canvas" aria-label="顶不住了游戏画布" />
         <GameHUD
           stats={stats}
-          onPause={() => gameRef.current?.togglePause()}
-          onSpeed={() => gameRef.current?.toggleSpeed()}
-          onUpgrade={() => gameRef.current?.upgradeSelected()}
-          onSell={() => gameRef.current?.sellSelected()}
+          onPause={() => {
+            playClick();
+            gameRef.current?.togglePause();
+          }}
+          onSpeed={() => {
+            playClick();
+            gameRef.current?.toggleSpeed();
+          }}
+          onUpgrade={() => {
+            playClick();
+            gameRef.current?.upgradeSelected();
+          }}
+          onSell={() => {
+            playClick();
+            gameRef.current?.sellSelected();
+          }}
         />
         <TowerBar
           coins={stats.coins}
           canBuild={stats.phase === 'playing'}
           selectedKind={stats.selectedBuildKind}
-          onBuild={(kind) => gameRef.current?.buildTower(kind)}
+          onBuild={(kind) => {
+            playClick();
+            gameRef.current?.buildTower(kind);
+          }}
         />
         <ResultScreen
           stats={stats}
-          onRetryCurrent={() => gameRef.current?.retryCurrentWave()}
-          onRestart={() => gameRef.current?.restart()}
+          onRetryCurrent={() => {
+            playClick();
+            gameRef.current?.retryCurrentWave();
+          }}
+          onRestart={() => {
+            playClick();
+            gameRef.current?.restart();
+          }}
         />
       </div>
     </main>

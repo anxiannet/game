@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { GameStats } from '../game/Game';
+import { audioManager } from '../lib/audioManager';
 
 type Props = {
   stats: GameStats;
@@ -23,6 +24,7 @@ export default function ResultScreen({ stats, onRetryCurrent, onRestart }: Props
   ].join('\n');
 
   const handleShare = async () => {
+    audioManager.play('ui_click');
     setShareStatus('');
     try {
       if (navigator.share) {

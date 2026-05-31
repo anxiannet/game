@@ -1,0 +1,858 @@
+{
+  "ui_click": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ui_confirm": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ui_cancel": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ui_error": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ui_popup": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ui_unlock": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ui_upgrade": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ui_warning": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ui_tab_switch": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ui_drag": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ui_drop": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ui_countdown": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "reward_claim": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "combo_reward": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "jackpot": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "mission_complete": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "gatling_upgrade": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "combo_2": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "combo_3": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "combo_5": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "combo_10": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "combo_max": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "kill_01": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "kill_02": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "kill_streak": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "multi_kill": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_phone_scroll": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_angry": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_keyboard": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_requirement": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_annoy": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_confused": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_typing_slow": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_panic": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "boss_laugh": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "skill_ready": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "skill_cooldown": {
+    "source": "Kenney Interface Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://kenney.nl/assets/interface-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "coin_pickup_01": {
+    "source": "Kenney RPG Audio / 50 RPG sound effects",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/50-rpg-sound-effects",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "coin_pickup_02": {
+    "source": "Kenney RPG Audio / 50 RPG sound effects",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/50-rpg-sound-effects",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "coin_pickup_03": {
+    "source": "Kenney RPG Audio / 50 RPG sound effects",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/50-rpg-sound-effects",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "gold_rain": {
+    "source": "Kenney RPG Audio / 50 RPG sound effects",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/50-rpg-sound-effects",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "armor_hit": {
+    "source": "Kenney RPG Audio / 50 RPG sound effects",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/50-rpg-sound-effects",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_lazy_walk": {
+    "source": "Kenney RPG Audio / 50 RPG sound effects",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/50-rpg-sound-effects",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_yawn": {
+    "source": "Kenney RPG Audio / 50 RPG sound effects",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/50-rpg-sound-effects",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "gatling_start": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "gatling_loop": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "gatling_end": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "shell_drop": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "bullet_hit": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "gatling_overheat": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "wifi_charge": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "wifi_shock": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "wifi_disconnect": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "wifi_interference": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "wifi_static": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "bomb_throw": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "bomb_explode": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "big_explosion": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "shockwave": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "hit_light": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "hit_medium": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "hit_heavy": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "critical_hit": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_hit": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_die": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_rush": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_stress": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_mutation": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "enemy_split": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "boss_spawn": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "boss_step": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "boss_roar": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "boss_attack": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "boss_phase2": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "boss_die": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "skill_cast": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "skill_activate": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ultimate_cast": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "ultimate_explode": {
+    "source": "Kenney Sci-Fi Sounds",
+    "author": "Kenney",
+    "license": "CC0 1.0 Universal",
+    "url": "https://opengameart.org/content/sci-fi-sounds",
+    "attributionRequired": false,
+    "sourceFile": ""
+  },
+  "bgm_normal": {
+    "source": "OpenGameArt - Tower Defense Theme",
+    "author": "DST",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/tower-defense-theme",
+    "attributionRequired": false,
+    "sourceFile": "DST-TowerDefenseTheme.mp3"
+  },
+  "office_ambient": {
+    "source": "BigSoundBank / LaSonotheque",
+    "license": "CC0 (public domain)",
+    "attributionRequired": false,
+    "author": "Joseph SARDIN",
+    "url": "https://bigsoundbank.com/noisy-office-industry-s0502.html",
+    "sourceFile": "0502.mp3"
+  },
+  "keyboard_loop": {
+    "source": "BigSoundBank / LaSonotheque",
+    "license": "CC0 (public domain)",
+    "attributionRequired": false,
+    "author": "Joseph SARDIN",
+    "url": "https://bigsoundbank.com/computer-keyboard-s0229.html",
+    "sourceFile": "0229.mp3"
+  },
+  "printer": {
+    "source": "BigSoundBank / LaSonotheque",
+    "license": "CC0 (public domain)",
+    "attributionRequired": false,
+    "author": "Joseph SARDIN",
+    "url": "https://bigsoundbank.com/inkjet-printer-s0169.html",
+    "sourceFile": "0169.mp3"
+  },
+  "phone_ring": {
+    "source": "BigSoundBank / LaSonotheque",
+    "license": "CC0 (public domain)",
+    "attributionRequired": false,
+    "author": "Joseph SARDIN",
+    "url": "https://bigsoundbank.com/phone-ring-5-s0375.html",
+    "sourceFile": "0375.mp3"
+  },
+  "air_conditioner": {
+    "source": "BigSoundBank / LaSonotheque",
+    "license": "CC0 (public domain)",
+    "attributionRequired": false,
+    "author": "Joseph SARDIN",
+    "url": "https://bigsoundbank.com/air-conditioner-s1471.html",
+    "sourceFile": "1471.mp3"
+  },
+  "mouse_clicks": {
+    "source": "BigSoundBank / LaSonotheque",
+    "license": "CC0 (public domain)",
+    "attributionRequired": false,
+    "author": "Joseph SARDIN",
+    "url": "https://bigsoundbank.com/raspberry-mouse-double-click-1-s1736.html",
+    "sourceFile": "1736.mp3"
+  },
+  "night_office": {
+    "source": "BigSoundBank / LaSonotheque",
+    "license": "CC0 (public domain)",
+    "attributionRequired": false,
+    "author": "Joseph SARDIN",
+    "url": "https://bigsoundbank.com/sound-2387-appartement-fenetre-fermee.html",
+    "sourceFile": "2387.mp3"
+  },
+  "fluorescent_buzz": {
+    "source": "BigSoundBank / LaSonotheque",
+    "license": "CC0 (public domain)",
+    "attributionRequired": false,
+    "author": "Joseph SARDIN",
+    "url": "https://bigsoundbank.com/air-extractor-s1032.html",
+    "sourceFile": "1032.mp3"
+  },
+  "rain_window": {
+    "source": "BigSoundBank / LaSonotheque",
+    "license": "CC0 (public domain)",
+    "attributionRequired": false,
+    "author": "Joseph SARDIN",
+    "url": "https://bigsoundbank.com/rain-on-car-windshield-2-s1297.html",
+    "sourceFile": "1297.mp3"
+  },
+  "clock_tick": {
+    "source": "BigSoundBank / LaSonotheque",
+    "license": "CC0 (public domain)",
+    "attributionRequired": false,
+    "author": "Joseph SARDIN",
+    "url": "https://bigsoundbank.com/clock-s0007.html",
+    "sourceFile": "0007.mp3"
+  },
+  "victory": {
+    "source": "OpenGameArt - Win Jingle",
+    "author": "Fupi",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/win-jingle",
+    "attributionRequired": false,
+    "sourceFile": "winjingle.zip / WinFretless.ogg"
+  },
+  "perfect_clear": {
+    "source": "OpenGameArt - Victory sting",
+    "author": "congusbongus",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/victory-sting",
+    "attributionRequired": false,
+    "sourceFile": "victory sting.ogg"
+  },
+  "new_record": {
+    "source": "OpenGameArt - And the winner is",
+    "author": "congusbongus",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/and-the-winner-is",
+    "attributionRequired": false,
+    "sourceFile": "winneris.ogg"
+  },
+  "defeat": {
+    "source": "OpenGameArt - Game Over (8-bit style)",
+    "author": "Aszura",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/game-over-8-bit-style",
+    "attributionRequired": false,
+    "sourceFile": "GameOver.ogg"
+  },
+  "sad_trombone": {
+    "source": "OpenGameArt - Win Jingle",
+    "author": "Fupi",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/win-jingle",
+    "attributionRequired": false,
+    "sourceFile": "winjingle.zip / WinBandoneon.ogg; used as comedic fail sting, not a copyrighted meme sample"
+  },
+  "game_over": {
+    "source": "OpenGameArt - Game Over Sound(Old School)",
+    "author": "den_yes",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/game-over-soundold-school",
+    "attributionRequired": false,
+    "sourceFile": "GameOver.ogg"
+  },
+  "fan_spin": {
+    "source": "OpenGameArt - Wind",
+    "author": "IgnasD",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/wind",
+    "attributionRequired": false,
+    "sourceFile": "wind.zip / Wind3.ogg"
+  },
+  "fan_boost": {
+    "source": "OpenGameArt - Air whoosh",
+    "author": "pyranostudios",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/air-whoosh",
+    "attributionRequired": false,
+    "sourceFile": "whoosh2.wav"
+  },
+  "fan_slow": {
+    "source": "OpenGameArt - Ice spells",
+    "author": "bart",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/ice-spells",
+    "attributionRequired": false,
+    "sourceFile": "icespells.zip / coldsnap.wav"
+  },
+  "wind_loop": {
+    "source": "OpenGameArt - wind whoosh loop",
+    "author": "SketchMan3",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/wind-whoosh-loop",
+    "attributionRequired": false,
+    "sourceFile": "wind woosh loop.ogg"
+  },
+  "bgm_wave": {
+    "source": "OpenGameArt - 8-Bit Battle Loop",
+    "author": "Wolfgang_",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/8-bit-battle-loop",
+    "attributionRequired": false,
+    "sourceFile": "8BitBattleLoop.ogg"
+  },
+  "bgm_boss": {
+    "source": "OpenGameArt - 8bit Action Boss Battle",
+    "author": "MintoDog",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/8bit-action-boss-battle",
+    "attributionRequired": false,
+    "sourceFile": "8bit_action_boss_battle_bpm145.mp3"
+  },
+  "bgm_lowhp": {
+    "source": "OpenGameArt - 8bit Action Boss Battle",
+    "author": "MintoDog",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/8bit-action-boss-battle",
+    "attributionRequired": false,
+    "sourceFile": "8bit_action_boss_battle_climax_bpm185.mp3"
+  },
+  "ice_cast": {
+    "source": "OpenGameArt - Ice spells",
+    "author": "bart",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/ice-spells",
+    "attributionRequired": false,
+    "sourceFile": "icespells.zip / ice.wav"
+  },
+  "ice_freeze": {
+    "source": "OpenGameArt - Freeze Spell",
+    "author": "artisticdude",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/freeze-spell-0",
+    "attributionRequired": false,
+    "sourceFile": "freeze.wav"
+  },
+  "ice_break": {
+    "source": "OpenGameArt - Ice breaking/shattering",
+    "author": "IgnasD",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/ice-breakingshattering",
+    "attributionRequired": false,
+    "sourceFile": "IceShatters.zip / LedasLuzta3.ogg"
+  },
+  "ice_crystal": {
+    "source": "OpenGameArt - Ice spells",
+    "author": "bart",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/ice-spells",
+    "attributionRequired": false,
+    "sourceFile": "icespells.zip / coldsnap.wav"
+  }
+}
